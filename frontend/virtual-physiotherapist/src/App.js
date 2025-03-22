@@ -1,12 +1,12 @@
-import logo from './logo.svg';
+import React from 'react';
 import './App.css';
-import VirtualPhysiotherapist from './components/VirtualPhysiotherapist';
-
+import EnhancedLandingAnimation from './components/EnhancedLandingAnimation';
+import './tailwind.css'; // Import Tailwind CSS
 
 function App() {
   return (
     <div className="App">
-      <VirtualPhysiotherapist />
+      <EnhancedLandingAnimation />
     </div>
   );
 }

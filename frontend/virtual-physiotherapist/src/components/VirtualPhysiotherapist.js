@@ -4,6 +4,7 @@ import { OrbitControls, useGLTF, Center, useFBX, useAnimations } from '@react-th
 import * as THREE from 'three';
 import apiClient from '../services/apiClient';
 import UserVideoFeed from './UserVideoFeed';
+import ChatHistorySidebar from './ChatHistorySidebar';
 
 // Simple 3D model component with animations
 const Model = React.forwardRef((props, ref) => {
@@ -14,25 +15,41 @@ const Model = React.forwardRef((props, ref) => {
   const { animations: idleAnimation } = useFBX('/animations/Breathing Idle.fbx');
   const { animations: greetingAnimation } = useFBX('/animations/Standing Greeting.fbx');
   const { animations: neckStretching } = useFBX('/animations/Neck Stretching.fbx');
+  const { animations: shakingHandsAnimation } = useFBX('/animations/Shaking Hands 1.fbx');
+  const { animations: talkingQuestionAnimation } = useFBX('/animations/Talking Question.fbx');
+  const { animations: talkingStandingAnimation } = useFBX('/animations/Talking Standing.fbx');
   
   // Name animations (ensuring they match when we reference them)
   idleAnimation[0].name = "idle";
   greetingAnimation[1].name = "greeting";
   neckStretching[1].name = "neckStretching";
+  shakingHandsAnimation[1].name = "shakingHands";
+  talkingQuestionAnimation[1].name = "talkingQuestion";
+  talkingStandingAnimation[1].name = "talkingStanding";
   
   // Add debug logs to see animation data
   console.log("Idle animation loaded:", idleAnimation);
   console.log("Greeting animation loaded:", greetingAnimation);
   console.log("Neck stretching animation loaded:", neckStretching);
+  console.log("Shaking hands animation loaded:", shakingHandsAnimation);
+  console.log("Talking question animation loaded:", talkingQuestionAnimation);
+  console.log("Talking standing animation loaded:", talkingStandingAnimation);
   
   // Animation state
-  const [animation, setAnimation] = useState("greeting");
+  const [animation, setAnimation] = useState("idle");
   
   // Group ref for animations
   const group = useRef();
 
   // Combine animations for the useAnimations hook
-  const animations = [idleAnimation[0], greetingAnimation[1], neckStretching[1]];
+  const animations = [
+    idleAnimation[0], 
+    greetingAnimation[1], 
+    neckStretching[1],
+    shakingHandsAnimation[1],
+    talkingQuestionAnimation[1],
+    talkingStandingAnimation[1]
+  ];
   
   // Setup animations using useAnimations hook
   const { actions, mixer } = useAnimations(animations, group);
@@ -52,7 +69,7 @@ const Model = React.forwardRef((props, ref) => {
   // Initialize animations when they become available
   useEffect(() => {
     // Wait until actions are loaded
-    if (actions.idle && actions.greeting && actions.neckStretching) {
+    if (actions.idle && actions.greeting) {
       console.log("Animations loaded successfully");
       
       // Start with greeting animation
@@ -106,92 +123,123 @@ const Model = React.forwardRef((props, ref) => {
     }
   }, [animation, actions]);
   
+  // Encapsulated animation functions
+  const playGreeting = () => {
+    setAnimation("greeting");
+  };
+  
+  const playIdle = () => {
+    setAnimation("idle");
+  };
+  
+  const playNeckStretch = () => {
+    setAnimation("neckStretching");
+  };
+  
+  const playShakingHands = () => {
+    setAnimation("shakingHands");
+  };
+  
+  const playTalkingQuestion = () => {
+    setAnimation("talkingQuestion");
+  };
+  
+  const playTalkingStanding = () => {
+    setAnimation("talkingStanding");
+  };
+  
+  // Neck stretch specific animations
+  const neckStretchRight = () => {
+    // First switch to the neck stretching animation
+    setAnimation("neckStretching");
+    
+    // After a small delay to ensure the animation is loaded
+    setTimeout(() => {
+      if (actions.neckStretching) {
+        console.log("Starting right tilt animation");
+        
+        // Reset the animation to beginning
+        actions.neckStretching.reset();
+        
+        // We'll use the animation mixer to manually control position
+        const neckStretchClip = actions.neckStretching._clip;
+        const fullDuration = neckStretchClip.duration;
+        
+        // Define right tilt as first 30% of the animation
+        const rightTiltEnd = fullDuration * 0.3;
+        
+        // Start playing from the beginning
+        actions.neckStretching.play();
+        
+        // Set up a watcher to stop at the right point
+        const checkInterval = setInterval(() => {
+          if (actions.neckStretching.time >= rightTiltEnd) {
+            console.log("Right tilt completed at time:", actions.neckStretching.time);
+            actions.neckStretching.paused = true;
+            clearInterval(checkInterval);
+          }
+        }, 100); // Check every 100ms
+      }
+    }, 100);
+  };
+  
+  const neckStretchHold = () => {
+    // This simply ensures the animation is paused
+    if (actions.neckStretching) {
+      actions.neckStretching.paused = true;
+      console.log("Animation paused at time:", actions.neckStretching.time);
+    }
+  };
+  
+  const neckStretchLeft = () => {
+    // Make sure we're using the neck stretching animation
+    setAnimation("neckStretching");
+    
+    // After a small delay to ensure the animation is loaded
+    setTimeout(() => {
+      if (actions.neckStretching) {
+        console.log("Starting left tilt animation");
+        
+        // Get the full duration of the animation
+        const neckStretchClip = actions.neckStretching._clip;
+        const fullDuration = neckStretchClip.duration;
+        
+        // Define left tilt as 40% to 70% of animation
+        const leftTiltStart = fullDuration * 0.4;
+        const leftTiltEnd = fullDuration * 0.7;
+        
+        // Start from the left tilt position
+        actions.neckStretching.reset();
+        actions.neckStretching.time = leftTiltStart;
+        actions.neckStretching.paused = false;
+        actions.neckStretching.play();
+        
+        // Set up a watcher to stop at the right point
+        const checkInterval = setInterval(() => {
+          if (actions.neckStretching.time >= leftTiltEnd) {
+            console.log("Left tilt completed at time:", actions.neckStretching.time);
+            actions.neckStretching.paused = true;
+            clearInterval(checkInterval);
+          }
+        }, 100); // Check every 100ms
+      }
+    }, 100);
+  };
+  
   // Expose methods to parent via ref
   React.useImperativeHandle(ref, () => ({
-    greet: () => {
-      setAnimation("greeting");
-    },
-    idle: () => {
-      setAnimation("idle");
-    },
-    neckStretch: () => {
-      setAnimation("neckStretching");
-    },
-    // Methods for specific neck stretching movements
-    neckStretchRight: () => {
-      // First switch to the neck stretching animation
-      setAnimation("neckStretching");
-      
-      // After a small delay to ensure the animation is loaded
-      setTimeout(() => {
-        if (actions.neckStretching) {
-          console.log("Starting right tilt animation");
-          
-          // Reset the animation to beginning
-          actions.neckStretching.reset();
-          
-          // We'll use the animation mixer to manually control position
-          const neckStretchClip = actions.neckStretching._clip;
-          const fullDuration = neckStretchClip.duration;
-          
-          // Define right tilt as first 30% of the animation
-          const rightTiltEnd = fullDuration * 0.3;
-          
-          // Start playing from the beginning
-          actions.neckStretching.play();
-          
-          // Set up a watcher to stop at the right point
-          const checkInterval = setInterval(() => {
-            if (actions.neckStretching.time >= rightTiltEnd) {
-              console.log("Right tilt completed at time:", actions.neckStretching.time);
-              actions.neckStretching.paused = true;
-              clearInterval(checkInterval);
-            }
-          }, 100); // Check every 100ms
-        }
-      }, 100);
-    },
-    neckStretchHold: () => {
-      // This simply ensures the animation is paused
-      if (actions.neckStretching) {
-        actions.neckStretching.paused = true;
-        console.log("Animation paused at time:", actions.neckStretching.time);
-      }
-    },
-    neckStretchLeft: () => {
-      // Make sure we're using the neck stretching animation
-      setAnimation("neckStretching");
-      
-      // After a small delay to ensure the animation is loaded
-      setTimeout(() => {
-        if (actions.neckStretching) {
-          console.log("Starting left tilt animation");
-          
-          // Get the full duration of the animation
-          const neckStretchClip = actions.neckStretching._clip;
-          const fullDuration = neckStretchClip.duration;
-          
-          // Define left tilt as 40% to 70% of animation
-          const leftTiltStart = fullDuration * 0.4;
-          const leftTiltEnd = fullDuration * 0.7;
-          
-          // Start from the left tilt position
-          actions.neckStretching.reset();
-          actions.neckStretching.time = leftTiltStart;
-          actions.neckStretching.paused = false;
-          actions.neckStretching.play();
-          
-          // Set up a watcher to stop at the right point
-          const checkInterval = setInterval(() => {
-            if (actions.neckStretching.time >= leftTiltEnd) {
-              console.log("Left tilt completed at time:", actions.neckStretching.time);
-              actions.neckStretching.paused = true;
-              clearInterval(checkInterval);
-            }
-          }, 100); // Check every 100ms
-        }
-      }, 100);
-    }
+    // Basic animations
+    greet: playGreeting,
+    idle: playIdle,
+    neckStretch: playNeckStretch,
+    shakingHands: playShakingHands,
+    talkingQuestion: playTalkingQuestion,
+    talkingStanding: playTalkingStanding,
+    
+    // Neck stretching specific movements
+    neckStretchRight,
+    neckStretchHold,
+    neckStretchLeft
   }));
   
   return (
@@ -210,17 +258,109 @@ const Model = React.forwardRef((props, ref) => {
   );
 });
 
-// Main component
 const VirtualPhysiotherapist = () => {
-  const [audioUrl, setAudioUrl] = useState(null);
-  const [currentExercise, setCurrentExercise] = useState(null);
-  const [headPose, setHeadPose] = useState(null);
-  const [feedback, setFeedback] = useState(null);
-  const [showVideoFeed, setShowVideoFeed] = useState(true);
-  const modelRef = useRef();
-  // Create a ref to store last feedback time
-  const lastFeedbackTime = useRef(Date.now());
+    const [audioUrl, setAudioUrl] = useState(null);
+    const [currentExercise, setCurrentExercise] = useState(null);
+    const [headPose, setHeadPose] = useState(null);
+    const [feedback, setFeedback] = useState(null);
+    const [showVideoFeed, setShowVideoFeed] = useState(true);
+    const [showSidebar, setShowSidebar] = useState(false);
+    const [slidedIn, setSlidedIn] = useState(false);
+    const [animationComplete, setAnimationComplete] = useState(false);
+    const [showCaptions, setShowCaptions] = useState(true);
+    const [currentCaption, setCurrentCaption] = useState("");
+    const [isCaptionVisible, setIsCaptionVisible] = useState(false);
+    const modelRef = useRef();
+    const lastFeedbackTime = useRef(Date.now());
 
+  // Use effect to trigger slide-in and introduction on component mount
+  useEffect(() => {
+    // Delay to ensure everything is loaded
+    const timer = setTimeout(() => {
+      handleSlideInIntroduction();
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  // New function for sliding in the model from the right and introducing itself
+  const handleSlideInIntroduction = () => {
+    // Slide in the model
+    setSlidedIn(true);
+    // Mark animation available
+    setAnimationComplete(true);
+
+    // If the model is ready, play greeting + speak AT THE SAME TIME
+    if (modelRef.current) {
+      modelRef.current.greet();  // Greeting animation
+      const introText = "I am Genesis, your physiotherapy assistant.";
+      apiClient.speakWithBrowserTTS(introText);
+      handleCaptionUpdate(introText);
+      
+      // If you still want to ask "How can I help you?" after 4s:
+      setTimeout(() => {
+        if (modelRef.current) {
+          modelRef.current.talkingQuestion();
+          const helpText = "How can I help you today?";
+          setTimeout(() => {
+            apiClient.speakWithBrowserTTS(helpText);
+            handleCaptionUpdate(helpText);
+          }, 500);
+        }
+      }, 4000);
+    }
+  };
+  
+  // Function to update captions
+  const handleCaptionUpdate = (text) => {
+    if (showCaptions) {
+      setCurrentCaption(text);
+      setIsCaptionVisible(true);
+      
+      // Hide caption after speech would likely be completed (rough calculation)
+      const wordsPerMinute = 150; // Average speaking rate
+      const words = text.split(' ').length;
+      const durationInMs = (words / wordsPerMinute) * 60 * 1000;
+      
+      // Minimum duration of 2 seconds, maximum of 8 seconds
+      const displayTime = Math.max(2000, Math.min(durationInMs, 8000));
+      
+      setTimeout(() => {
+        setIsCaptionVisible(false);
+      }, displayTime);
+    }
+  };
+  
+  // Helper function to speak text with appropriate animation
+  const speakWithAnimation = (text) => {
+    try {
+      // Update captions first
+      handleCaptionUpdate(text);
+      
+      // Try to use ElevenLabs
+      apiClient.generateSpeech(text)
+        .then((arrayBuffer) => {
+          const audioBlob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+          const tempUrl = URL.createObjectURL(audioBlob);
+          setAudioUrl(tempUrl);
+          
+          // Auto-play
+          const audio = new Audio(tempUrl);
+          audio.play();
+        })
+        .catch((error) => {
+          console.error('Error generating speech:', error);
+          // If ElevenLabs fails, fallback to built-in voice
+          apiClient.speakWithBrowserTTS(text);
+        });
+    } catch (error) {
+      console.error('Error generating speech:', error);
+      // Direct fallback
+      apiClient.speakWithBrowserTTS(text);
+    }
+  };
+
+  // Animation control functions - encapsulated for clarity
   const handleSpeakIntro = async () => {
     setCurrentExercise(null);
     try {
@@ -232,9 +372,10 @@ const VirtualPhysiotherapist = () => {
         console.warn("Model reference not available");
       }
       
-      const arrayBuffer = await apiClient.generateSpeech(
-        'Hello, I am your virtual physiotherapist. How can I help you today?'
-      );
+      const introText = 'Hello, I am Genesis, your virtual physiotherapist. How can I help you today?';
+      handleCaptionUpdate(introText);
+      
+      const arrayBuffer = await apiClient.generateSpeech(introText);
       const audioBlob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
       const tempUrl = URL.createObjectURL(audioBlob);
       setAudioUrl(tempUrl);
@@ -245,9 +386,9 @@ const VirtualPhysiotherapist = () => {
     } catch (error) {
       console.error('Error generating speech:', error);
       // If ElevenLabs fails, fallback to built-in voice
-      apiClient.speakWithBrowserTTS(
-        'Sorry, something went wrong with ElevenLabs. Using browser speech instead.'
-      );
+      const introText = 'Hello, I am Genesis, your virtual physiotherapist. How can I help you today?';
+      apiClient.speakWithBrowserTTS(introText);
+      handleCaptionUpdate(introText);
     }
   };
 
@@ -268,9 +409,9 @@ const VirtualPhysiotherapist = () => {
       }, neckStretchDuration * 1000);
       
       // Speak instructions for the exercise
-      apiClient.speakWithBrowserTTS(
-        'Let\'s do some neck stretching exercises. Follow along with me.'
-      );
+      const neckText = 'Let\'s do some neck stretching exercises. Follow along with me.';
+      apiClient.speakWithBrowserTTS(neckText);
+      handleCaptionUpdate(neckText);
     } else {
       console.warn("Model reference not available");
     }
@@ -284,9 +425,9 @@ const VirtualPhysiotherapist = () => {
       modelRef.current.neckStretchRight();
       
       // Speak instructions
-      apiClient.speakWithBrowserTTS(
-        'Slowly tilt your head to the right side until you feel a gentle stretch.'
-      );
+      const rightText = 'Slowly tilt your head to the right side until you feel a gentle stretch.';
+      apiClient.speakWithBrowserTTS(rightText);
+      handleCaptionUpdate(rightText);
     }
   };
 
@@ -297,9 +438,9 @@ const VirtualPhysiotherapist = () => {
       modelRef.current.neckStretchHold();
       
       // Speak instructions
-      apiClient.speakWithBrowserTTS(
-        'Hold this position for 15 to 30 seconds. Breathe deeply and feel the stretch.'
-      );
+      const holdText = 'Hold this position for 15 to 30 seconds. Breathe deeply and feel the stretch.';
+      apiClient.speakWithBrowserTTS(holdText);
+      handleCaptionUpdate(holdText);
     }
   };
 
@@ -310,9 +451,9 @@ const VirtualPhysiotherapist = () => {
       modelRef.current.neckStretchLeft();
       
       // Speak instructions
-      apiClient.speakWithBrowserTTS(
-        'Now slowly tilt your head to the left side until you feel a gentle stretch on the other side.'
-      );
+      const leftText = 'Now slowly tilt your head to the left side until you feel a gentle stretch on the other side.';
+      apiClient.speakWithBrowserTTS(leftText);
+      handleCaptionUpdate(leftText);
     }
   };
 
@@ -323,9 +464,66 @@ const VirtualPhysiotherapist = () => {
       modelRef.current.idle();
       
       // Speak instructions
-      apiClient.speakWithBrowserTTS(
-        'Well done! Let\'s return to the starting position.'
-      );
+      const idleText = 'Well done! Let\'s return to the starting position.';
+      apiClient.speakWithBrowserTTS(idleText);
+      handleCaptionUpdate(idleText);
+    }
+  };
+  
+  // Handlers for new animations
+  const handleShakingHands = () => {
+    setCurrentExercise('shaking-hands');
+    if (modelRef.current) {
+      console.log("Playing shaking hands animation");
+      modelRef.current.shakingHands();
+      
+      // Speak appropriate message
+      const shakinigText = 'It\'s a pleasure to meet you. I\'m here to assist with your physiotherapy needs.';
+      apiClient.speakWithBrowserTTS(shakinigText);
+      handleCaptionUpdate(shakinigText);
+    }
+  };
+  
+  const handleTalkingQuestion = () => {
+    setCurrentExercise('talking-question');
+    if (modelRef.current) {
+      console.log("Playing talking question animation");
+      modelRef.current.talkingQuestion();
+      
+      // Speak appropriate message
+      const questionText = 'Do you have any questions about your exercise routine?';
+      apiClient.speakWithBrowserTTS(questionText);
+      handleCaptionUpdate(questionText);
+    }
+  };
+  
+  const handleTalkingStanding = () => {
+    setCurrentExercise('talking-standing');
+    if (modelRef.current) {
+      console.log("Playing talking standing animation");
+      modelRef.current.talkingStanding();
+      
+      // Speak appropriate message
+      const standingText = 'Let me explain the next set of exercises we\'ll be working on together.';
+      apiClient.speakWithBrowserTTS(standingText);
+      handleCaptionUpdate(standingText);
+    }
+  };
+
+  // Toggle sidebar visibility
+  const toggleSidebar = () => {
+    setShowSidebar(prev => !prev);
+    console.log("Toggling sidebar:", !showSidebar); // Debug log
+  };
+  
+  // Toggle captions
+  const toggleCaptions = () => {
+    setShowCaptions(prev => !prev);
+    console.log("Toggling captions:", !showCaptions);
+    
+    // If turning captions off, hide any currently visible caption
+    if (showCaptions) {
+      setIsCaptionVisible(false);
     }
   };
 
@@ -476,26 +674,134 @@ const VirtualPhysiotherapist = () => {
         backgroundColor: 'rgba(255,255,255,0.8)',
         padding: '15px',
         borderRadius: '8px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+        boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+        width: '320px', // Fixed width
+        height: 'auto', // Height adjusts based on content
+        overflow: 'hidden' // Prevent content overflow
       }}>
-        <h3 style={{ margin: '0 0 10px 0' }}>Your Camera Feed</h3>
-        <UserVideoFeed onHeadPoseUpdate={handleHeadPoseUpdate} />
+        <h3 style={{ 
+          margin: '0 0 10px 0',
+          fontSize: '16px',
+          fontWeight: '500',
+          fontFamily: 'Helvetica Now, Helvetica, Arial, sans-serif',
+          color: '#222'
+        }}>Your Camera Feed</h3>
         
-        {headPose && (
-          <div style={{ marginTop: '10px', fontSize: '14px' }}>
-            <div>Head Rotation:</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0' }}>
-              <span>Yaw (left/right): {headPose.yaw.toFixed(1)}°</span>
-              <span>Pitch (up/down): {headPose.pitch.toFixed(1)}°</span>
-              <span>Roll (tilt): {headPose.roll.toFixed(1)}°</span>
-            </div>
-            <div>Confidence: {(headPose.confidence * 100).toFixed(1)}%</div>
+        <div style={{ 
+          width: '290px', // Fixed width for the feed container
+          height: '217.5px', // Fixed height (4:3 aspect ratio)
+          overflow: 'hidden', // Hide overflow
+          borderRadius: '5px',
+          backgroundColor: '#f0f0f0',
+          marginBottom: '10px',
+          position: 'relative' // For positioning StatusIndicator
+        }}>
+          <UserVideoFeed onHeadPoseUpdate={handleHeadPoseUpdate} />
+        </div>
+        
+        <div style={{ 
+          marginTop: '10px', 
+          fontSize: '14px',
+          fontFamily: 'Helvetica Now, Helvetica, Arial, sans-serif',
+          color: '#333',
+          padding: '8px',
+          backgroundColor: '#f3f3f3',
+          borderRadius: '5px'
+        }}>
+        <div 
+        style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            fontWeight: '500', 
+            marginBottom: '5px'
+        }}
+        >
+        <span>Head Rotation:</span>
+        <span>
+            {headPose
+            ? headPose.yaw < -10
+                ? 'Left'
+                : headPose.yaw > 10
+                ? 'Right'
+                : 'Neutral'
+            : 'Neutral'}
+        </span>
+        </div>
+        <div 
+        style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '5px'
+        }}
+        >
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Yaw (left/right):</span>
+            <span>{headPose ? headPose.yaw.toFixed(1) : '0.0'}°</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Pitch (up/down):</span>
+            <span>{headPose ? headPose.pitch.toFixed(1) : '0.0'}°</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Roll (tilt):</span>
+            <span>{headPose ? headPose.roll.toFixed(1) : '0.0'}°</span>
+        </div>
+        </div>
+          <div style={{ 
+            marginTop: '5px', 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            borderTop: '1px solid #e0e0e0',
+            paddingTop: '5px'
+          }}>
+            <span>Confidence:</span>
+            <span>{headPose ? (headPose.confidence * 100).toFixed(1) : '0.0'}%</span>
           </div>
-        )}
+        </div>
       </div>
     );
   }, [showVideoFeed, handleHeadPoseUpdate, headPose]); // Only re-render when these change
 
+  // CSS styles for buttons
+  const buttonStyle = {
+    backgroundColor: '#ffffff',
+    border: 'none',
+    padding: '8px 15px',
+    borderRadius: '5px',
+    boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+    cursor: 'pointer',
+    fontFamily: 'Helvetica Now, Helvetica, Arial, sans-serif',
+    fontSize: '14px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px'
+  };
+  
+  const topButtonStyle = {
+    ...buttonStyle,
+    padding: '8px',
+    width: '40px',
+    height: '40px'
+  };
+  
+  const captionButtonStyle = {
+    ...topButtonStyle,
+    backgroundColor: showCaptions ? '#4CAF50' : '#ffffff',
+    color: showCaptions ? 'white' : 'black',
+  };
+  
+  const activeButtonStyle = (animationName) => ({
+    backgroundColor: currentExercise === animationName ? '#4CAF50' : '#ffffff',
+    color: currentExercise === animationName ? 'white' : 'black',
+    border: 'none',
+    padding: '8px 15px',
+    borderRadius: '5px',
+    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+    cursor: 'pointer'
+  });
+
+  // Return the enhanced UI with captions
   return (
     <div style={{ 
       width: '100vw', 
@@ -506,6 +812,67 @@ const VirtualPhysiotherapist = () => {
       background: 'linear-gradient(to bottom, #e6f5ff, #b3e0ff)',
       overflow: 'hidden'
     }}>
+      {/* Top navigation with Sidebar Toggle and Captions Toggle */}
+      <div style={{
+        position: 'absolute',
+        top: 20,
+        left: 20,
+        display: 'flex',
+        gap: '10px',
+        zIndex: 20,
+      }}>
+        {/* Sidebar Toggle Button */}
+        <button
+          onClick={toggleSidebar}
+          style={topButtonStyle}
+          aria-label="Toggle Sidebar"
+        >
+          <div style={{ fontSize: '20px' }}>☰</div>
+        </button>
+        
+        {/* Captions Toggle Button */}
+        <button
+          onClick={toggleCaptions}
+          style={captionButtonStyle}
+          aria-label="Toggle Captions"
+          title={showCaptions ? "Hide Captions" : "Show Captions"}
+        >
+          <div style={{ fontSize: '20px' }}>CC</div>
+        </button>
+      </div>
+
+      {/* Chat Sidebar */}
+      <ChatHistorySidebar 
+        isVisible={showSidebar} 
+        onClose={toggleSidebar} 
+      />
+      
+      {/* Captions Display */}
+      <div 
+        style={{
+          position: 'absolute',
+          bottom: 80,
+          left: '50%',
+          transform: `translateX(-50%) scale(${isCaptionVisible ? 1 : 0})`,
+          opacity: isCaptionVisible ? 1 : 0,
+          transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          color: 'white',
+          padding: '12px 20px',
+          borderRadius: '10px',
+          fontFamily: 'Helvetica Now, Helvetica, Arial, sans-serif',
+          fontSize: '16px',
+          fontWeight: '500',
+          maxWidth: '80%',
+          textAlign: 'center',
+          boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
+          zIndex: 10,
+          marginBottom: '20px'
+        }}
+      >
+        {currentCaption}
+      </div>
+      
       <Canvas 
         camera={{ position: [0, 0, 4], fov: 60 }}
         shadows
@@ -532,9 +899,20 @@ const VirtualPhysiotherapist = () => {
 
         <directionalLight position={[10, 0, 10]} intensity={2} />
 
-        
-        {/* Model */}
-        {MemoizedModel}
+        {/* Model container with slide-in animation */}
+        <group
+          position={[
+            slidedIn ? 0 : 8, // Start off-screen to the right, slide to center
+            0,
+            0
+          ]}
+          style={{
+            transition: 'transform 1s ease-out'
+          }}
+        >
+          {/* Model */}
+          {MemoizedModel}
+        </group>
         
         {/* Gradient floor that fades out from the center */}
         <mesh 
@@ -610,159 +988,52 @@ const VirtualPhysiotherapist = () => {
         />
       </Canvas>
       
-      {/* Controls and UI section - memoized to prevent re-renders */}
-      {useMemo(() => (
+      {/* Feedback area - only showing when there is feedback */}
+      {feedback && animationComplete && (
         <div style={{ 
-          position: 'absolute', 
-          top: 20, 
-          left: 20, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '10px',
-          zIndex: 10
+          position: 'absolute',
+          bottom: 20,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          marginTop: '10px', 
+          padding: '15px', 
+          backgroundColor: 
+            feedback.status === 'good' ? 'rgba(76, 175, 80, 0.9)' : 
+            feedback.status === 'warning' ? 'rgba(255, 152, 0, 0.9)' : 
+            'rgba(244, 67, 54, 0.9)', 
+          color: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+          maxWidth: '500px',
+          zIndex: 10,
+          textAlign: 'center'
         }}>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button 
-              onClick={handleSpeakIntro}
-              style={{
-                backgroundColor: '#ffffff',
-                border: 'none',
-                padding: '8px 15px',
-                borderRadius: '5px',
-                boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-                cursor: 'pointer'
-              }}
-            >
-              Speak Intro
-            </button>
-            <button 
-              onClick={handleNeckStretch}
-              style={{
-                backgroundColor: '#ffffff',
-                border: 'none',
-                padding: '8px 15px',
-                borderRadius: '5px',
-                boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-                cursor: 'pointer'
-              }}
-            >
-              Full Neck Exercise
-            </button>
-            <button 
-              onClick={toggleVideoFeed}
-              style={{
-                backgroundColor: '#ffffff',
-                border: 'none',
-                padding: '8px 15px',
-                borderRadius: '5px',
-                boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-                cursor: 'pointer'
-              }}
-            >
-              {showVideoFeed ? 'Hide' : 'Show'} Video Feed
-            </button>
-          </div>
-          
-          {/* Step-by-step neck exercise controls */}
-          <div style={{ 
-            marginTop: '10px', 
-            padding: '15px', 
-            backgroundColor: 'rgba(255,255,255,0.8)', 
-            borderRadius: '8px',
-            boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px'
-          }}>
-            <h3 style={{ margin: '0 0 10px 0' }}>Step-by-Step Neck Exercise</h3>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button 
-                onClick={handleNeckStretchRight}
-                style={{ 
-                  backgroundColor: currentExercise === 'neck-right' ? '#4CAF50' : '#ffffff',
-                  color: currentExercise === 'neck-right' ? 'white' : 'black',
-                  border: 'none',
-                  padding: '8px 15px',
-                  borderRadius: '5px',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                  cursor: 'pointer'
-                }}
-              >
-                1. Tilt Right
-              </button>
-              <button 
-                onClick={handleNeckStretchHold}
-                style={{ 
-                  backgroundColor: currentExercise === 'neck-hold' ? '#4CAF50' : '#ffffff',
-                  color: currentExercise === 'neck-hold' ? 'white' : 'black',
-                  border: 'none',
-                  padding: '8px 15px',
-                  borderRadius: '5px',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                  cursor: 'pointer'
-                }}
-              >
-                2. Hold Position
-              </button>
-              <button 
-                onClick={handleNeckStretchLeft}
-                style={{ 
-                  backgroundColor: currentExercise === 'neck-left' ? '#4CAF50' : '#ffffff',
-                  color: currentExercise === 'neck-left' ? 'white' : 'black',
-                  border: 'none',
-                  padding: '8px 15px',
-                  borderRadius: '5px',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                  cursor: 'pointer'
-                }}
-              >
-                3. Tilt Left
-              </button>
-              <button 
-                onClick={handleReturnToIdle}
-                style={{
-                  backgroundColor: '#ffffff',
-                  border: 'none',
-                  padding: '8px 15px',
-                  borderRadius: '5px',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                  cursor: 'pointer'
-                }}
-              >
-                4. Return to Start
-              </button>
-            </div>
-          </div>
-          
-          {/* Feedback area */}
-          {feedback && (
-            <div style={{ 
-              marginTop: '10px', 
-              padding: '15px', 
-              backgroundColor: 
-                feedback.status === 'good' ? 'rgba(76, 175, 80, 0.9)' : 
-                feedback.status === 'warning' ? 'rgba(255, 152, 0, 0.9)' : 
-                'rgba(244, 67, 54, 0.9)', 
-              color: 'white',
-              borderRadius: '8px',
-              boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-              maxWidth: '500px'
-            }}>
-              <h4 style={{ margin: '0 0 5px 0' }}>Feedback</h4>
-              <p style={{ margin: 0 }}>{feedback.message}</p>
-            </div>
-          )}
+          <h4 style={{ margin: '0 0 5px 0' }}>Feedback</h4>
+          <p style={{ margin: 0 }}>{feedback.message}</p>
         </div>
-      ), [currentExercise, showVideoFeed, feedback])}
+      )}
       
-      {/* Video feed with head pose estimation */}
-      {MemoizedVideoFeed}
+      {/* Video feed with head pose estimation - fade in after animation */}
+      <div style={{
+        opacity: animationComplete ? 1 : 0,
+        transition: 'opacity 0.5s ease-in',
+      }}>
+        {MemoizedVideoFeed}
+      </div>
       
+      {/* Audio controls - hidden by default but kept for debugging */}
       {audioUrl && (
         <audio
           src={audioUrl}
           controls
-          style={{ position: 'absolute', bottom: 20, left: 20 }}
+          style={{ 
+            position: 'absolute', 
+            bottom: 20, 
+            left: 20,
+            opacity: 0, // Hidden by default
+            height: 0,
+            width: 0
+          }}
         />
       )}
     </div>

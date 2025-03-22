@@ -13,7 +13,7 @@ class ApiClient {
       this.voiceId =
         process.env.REACT_APP_ELEVENLABS_VOICE_ID ||
         process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID ||
-        '21m00Tcm4TlvDq8ikWAM'; // Rachel’s voice ID (female voice)
+        'cgSgspJ2msm6clMCkdW9'; // Jessica's voice ID (female voice)
   
       if (!this.elevenLabsApiKey) {
         console.warn(

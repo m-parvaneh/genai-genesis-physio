@@ -8,7 +8,7 @@ const AudioPlayer = () => {
   const [audio, setAudio] = useState(null);
   const [questionNumber, setQuestionNumber] = useState(0);
   // useEffect(() => {
-  //   setAudio(new Audio(sound));
+  //   setAudio(new Audio(q2));
   //   // only run once on the first render on the client
   // }, []);
 
@@ -21,7 +21,6 @@ const AudioPlayer = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       console.log(`Waited 500ms, count is now: ${questionNumber}`);
-      setAudio();
       if (questionNumber == 1) {
         setAudio(new Audio(q1));
       } else if (questionNumber == 2) {
@@ -29,14 +28,14 @@ const AudioPlayer = () => {
       } else if (questionNumber == 3) {
         setAudio(new Audio(q3));
       }
-    }, 500);
+    }, 1000);
 
     return () => clearTimeout(timer); // Cleanup on unmount
   }, [questionNumber]); // Runs when `count` changes
 
-  const playAudio = useCallback(() => {
+  const playAudio = () => {
     if (!audio) {
-      console.log("dnowondw");
+      console.log("no audio object");
     }
 
     //audio.crossOrigin = "anonymous";
@@ -46,9 +45,7 @@ const AudioPlayer = () => {
     } catch (err) {
       console.log("Failed to play, error: " + err);
     }
-
-    console.log("played");
-  }, [audio]);
+  };
 
   return (
     <div>

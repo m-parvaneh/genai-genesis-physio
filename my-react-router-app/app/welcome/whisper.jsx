@@ -1,10 +1,69 @@
 import { useRef, useEffect, useState } from "react";
 
-export const UI = ({ hidden, ...props }) => {
+export const Whisper = ({ setQuestionNumber, questionNumber, ...props }) => {
   const input = useRef();
   const [isRecording, setIsRecording] = useState(false);
   const [audioStream, setAudioStream] = useState(null);
-  const [recordedMessage, setRecordedMessage] = useState(null);
+  const [response, setResponse] = useState(null); // Store the API response
+
+  const [recordedMessage, setRecordedMessage] = useState({
+    q1: "",
+    q2: "",
+    q3: "",
+  });
+  const [blob, setBlob] = useState(null);
+
+  // Function to update the dictionary
+  const updateDictionary = (key, value) => {
+    setRecordedMessage((prevDict) => ({
+      ...prevDict, // Keep the existing values
+      [key]: value, // Update the specified key
+    }));
+  };
+
+  // Function to call the API
+  const fetchTreatment = async (message) => {
+    try {
+      const res = await fetch("http://localhost:5000/treatment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ questionnaire: message }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch treatment plan.");
+      }
+      console.log("Fetching data from LLM");
+
+      const data = await res.json();
+      console.log(data);
+      setResponse(data); // Store the API response
+    } catch (err) {
+      console.log("there was an error in the api call to gemini");
+    }
+  };
+
+  useEffect(() => {
+    if (questionNumber == 4) {
+      const s =
+        "Q1: Let me see if i can help you out! Can you please tell me what kind of problem you're experiencing. Please make sure to tell me what part of your body is affected specifically, like your  neck, lower back, knee, et cetera" +
+        ", A: " +
+        recordedMessage[1] +
+        " Q2: Gotcha, now jow would you describe the severity of your pain? For example, is it more of a dull ache or sharp consistent pain?" +
+        ", A: " +
+        recordedMessage[2] +
+        " Q3: Thank you for letting me know. Finally, are there any activities or movements that trigger the pain or make it worse?" +
+        ", A: " +
+        recordedMessage[3] +
+        ".";
+      console.log(s);
+      fetchTreatment(s);
+    } else {
+      console.log(questionNumber);
+    }
+  }, [recordedMessage]);
 
   const toggleRecording = async () => {
     if (!isRecording) {
@@ -16,17 +75,23 @@ export const UI = ({ hidden, ...props }) => {
         const audioChunks = [];
 
         mediaRecorder.ondataavailable = (event) => {
-          audioChunks.push(event.data);
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
         };
 
         mediaRecorder.onstop = async () => {
           console.log("Recording stopped, processing audio...");
-          const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+          const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+          setBlob(audioBlob); // Store the file in state
+
           console.log("Audio blob created:", audioBlob);
 
           const formData = new FormData();
           formData.append("file", audioBlob, "audio.webm");
           formData.append("model", "whisper-1");
+
+          const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
           try {
             console.log("Sending request to Whisper API...");
@@ -35,9 +100,7 @@ export const UI = ({ hidden, ...props }) => {
               {
                 method: "POST",
                 headers: {
-                  Authorization: `Bearer ${
-                    import.meta.env.VITE_OPENAI_API_KEY
-                  }`,
+                  Authorization: `Bearer ${OPENAI_API_KEY}`,
                 },
                 body: formData,
               }
@@ -50,11 +113,15 @@ export const UI = ({ hidden, ...props }) => {
             }
 
             const data = await response.json();
+            if (data.text) {
+              updateDictionary(questionNumber, data.text);
+            } else {
+              updateDictionary(questionNumber, "did not receive answer");
+            }
+
             console.log("Transcription result:", data);
 
-            if (data.text) {
-              setRecordedMessage(data.text);
-            }
+            setQuestionNumber((prev) => prev + 1);
           } catch (error) {
             console.error("Error transcribing audio:", error);
             alert("Error transcribing audio. Please try again.");
@@ -75,12 +142,7 @@ export const UI = ({ hidden, ...props }) => {
 
   return (
     <div className="fixed inset-0 z-10 flex flex-col justify-between p-8">
-      {/* Header */}
-      <div className="self-start rounded-2xl bg-black/50 p-6 border border-white/10 shadow-xl">
-        <h1 className="text-3xl font-bold text-white">AI avatar</h1>
-      </div>
-
-      {/* Recording Status */}
+      Recording Status
       {isRecording && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
           <div className="flex items-center gap-3 bg-black/70 px-6 py-4 rounded-full border border-white/20">
@@ -89,56 +151,19 @@ export const UI = ({ hidden, ...props }) => {
           </div>
         </div>
       )}
-
       {/* Input Area */}
       <div className="flex items-center gap-4 max-w-3xl mx-auto w-full">
         <div className="flex-1 relative">
-          <input
-            className="w-full h-16 px-6 rounded-full bg-black/50 border border-white/10 text-white placeholder:text-white/50 text-lg focus:outline-none focus:ring-2 focus:ring-white/30"
-            placeholder={recordedMessage || "Ask me anything..."}
-            ref={input}
-            disabled={recordedMessage !== null}
-          />
-          <button
-            onClick={toggleRecording}
-            className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full 
-            ${isRecording ? "bg-red-500" : "bg-white/10"} 
-            hover:bg-white/20 transition-all border border-white/10`}
-          >
-            {isRecording ? (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="w-6 h-6 text-white"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"
-                />
-              </svg>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="w-6 h-6 text-white"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
-                />
-              </svg>
-            )}
+          <button onClick={toggleRecording}>
+            {isRecording ? "Stop Recording" : "Start Recording"}
           </button>
         </div>
       </div>
+      {blob && (
+        <div>
+          <audio controls src={URL.createObjectURL(blob)}></audio>
+        </div>
+      )}
     </div>
   );
 };

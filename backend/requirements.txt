@@ -2,3 +2,8 @@ flask
 python-dotenv
 whisper-openai
 elevenlabs
+functions_framework
+flask-socketio
+google
+google-genai
+playsound==1.2.2

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import sound from "/sample-3s.mp3";
+import sound from "/Auughhh-Sound-Effect.mp3";
 
 const AudioPlayer = () => {
   const [audio, setAudio] = useState(null);

@@ -29,7 +29,7 @@ export const Whisper = ({ setQuestionNumber, questionNumber, ...props }) => {
   // Function to call the API
   const fetchTreatment = async (message) => {
     try {
-      const res = await fetch("http://localhost:5000/treatment", {
+      const res = await fetch("http://localhost:8000/treatment", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -4,23 +4,22 @@ import os
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_socketio import SocketIO, emit
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from datetime import datetime
 
 from elevenlabs import ElevenLabs
 from google import genai
-import asyncio
 
 
 from helpers import *
 
 # Initialize Flask app
 app = Flask(__name__)
+CORS(app, origins="*", supports_credentials=True)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-for-testing')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Routes
-@app.route('/')
+@app.route('/', methods=['GET', 'OPTIONS'])
 def index():
     return jsonify({
                 'status': 'success',
@@ -28,12 +27,24 @@ def index():
             }), 200
 
 
-@app.route('/treatment', methods=['POST'])
+@app.route('/treatment', methods=["POST", "OPTIONS"])
 def treatment():
     """
     Use an LLM to generate the correct treatment plan based on the 
     issue the user is experiencing. 
     """
+    print("Got into the function")
+    # Set CORS headers for the preflight request
+    if request.method == 'OPTIONS':
+        # Allows requests from specified domains
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '3600'
+        }
+        return ('', 204, headers)
+
     # Sample JSON payload response:
     sample_exercise_json = """
     {
@@ -106,13 +117,6 @@ def treatment():
 
     # Up to date code
     gemini_key = os.environ.get("GEMINI_API_KEY")
-
-    # Ensure there is an active event loop
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
     client = genai.Client(api_key=gemini_key)
     response = client.models.generate_content(
         model='gemini-2.0-flash',
@@ -129,10 +133,9 @@ def treatment():
     )
     audio_payload = apply_to_all_string_values(payload, generate_audio_payload, client)
 
-    return jsonify(audio_payload)
+    return jsonify(audio_payload), 200
 
-
-@app.route('/pose', methods=['POST'])
+@app.route('/pose', methods=['POST', 'OPTIONS'])
 def pose_estimation(request):
     pass
 
@@ -205,4 +208,4 @@ def handle_ping_event(json):
 
 if __name__ == '__main__':
     # app.run(debug=True)
-    socketio.run(app, debug=True)
+    socketio.run(app, port=8000, debug=True)

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import apiClient from '../services/apiClient';
 import UserVideoFeed from './UserVideoFeed';
 import ChatHistorySidebar from './ChatHistorySidebar';
+import ThinkingBox from "./ThinkingBox";
 
 // Simple 3D model component with animations
 const Model = React.forwardRef((props, ref) => {
@@ -18,6 +19,7 @@ const Model = React.forwardRef((props, ref) => {
   const { animations: shakingHandsAnimation } = useFBX('/animations/Shaking Hands 1.fbx');
   const { animations: talkingQuestionAnimation } = useFBX('/animations/Talking Question.fbx');
   const { animations: talkingStandingAnimation } = useFBX('/animations/Talking Standing.fbx');
+  const { animations: thinkingAnimation } = useFBX('/animations/Thinking.fbx');
   
   // Name animations (ensuring they match when we reference them)
   idleAnimation[0].name = "idle";
@@ -26,6 +28,7 @@ const Model = React.forwardRef((props, ref) => {
   shakingHandsAnimation[1].name = "shakingHands";
   talkingQuestionAnimation[1].name = "talkingQuestion";
   talkingStandingAnimation[1].name = "talkingStanding";
+  thinkingAnimation[1].name = "thinking";
   
   // Add debug logs to see animation data
   console.log("Idle animation loaded:", idleAnimation);
@@ -34,6 +37,7 @@ const Model = React.forwardRef((props, ref) => {
   console.log("Shaking hands animation loaded:", shakingHandsAnimation);
   console.log("Talking question animation loaded:", talkingQuestionAnimation);
   console.log("Talking standing animation loaded:", talkingStandingAnimation);
+  console.log("Thinking animation loaded: ", thinkingAnimation);
   
   // Animation state
   const [animation, setAnimation] = useState("idle");
@@ -270,8 +274,17 @@ const VirtualPhysiotherapist = () => {
     const [showCaptions, setShowCaptions] = useState(true);
     const [currentCaption, setCurrentCaption] = useState("");
     const [isCaptionVisible, setIsCaptionVisible] = useState(false);
+    const [questionStep, setQuestionStep] = useState(0);
+    const [showThinking, setShowThinking] = useState(false);
     const modelRef = useRef();
     const lastFeedbackTime = useRef(Date.now());
+
+  // Define the questions array
+  const questions = [
+    { text: "Where is the pain?", animation: "talkingQuestion" },
+    { text: "How bad is it?", animation: "talkingQuestion" },
+    { text: "What makes it worse?", animation: "talkingQuestion" }
+  ];
 
   // Use effect to trigger slide-in and introduction on component mount
   useEffect(() => {
@@ -283,33 +296,89 @@ const VirtualPhysiotherapist = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // New function for sliding in the model from the right and introducing itself
-  const handleSlideInIntroduction = () => {
+    // Function to ask a specific question
+    const askQuestion = (index) => {
+        if (index >= questions.length) return;
+        
+        const question = questions[index];
+        
+        if (modelRef.current) {
+          // Play the appropriate animation for the question
+          if (question.animation && modelRef.current[question.animation]) {
+            modelRef.current[question.animation]();
+          }
+          
+          // Speak the question
+          apiClient.speakWithBrowserTTS(question.text);
+          handleCaptionUpdate(question.text);
+          
+          // Move to the next question automatically
+          // In a real app, you'd wait for user input before moving on
+          if (index < questions.length - 1) {
+            setQuestionStep(index + 1);
+          } else {
+            // This is the last question, move to the next step
+            setQuestionStep(questions.length);
+          }
+        }
+      };
+
+// New function for sliding in the model from the right and introducing itself
+const handleSlideInIntroduction = () => {
     // Slide in the model
     setSlidedIn(true);
     // Mark animation available
     setAnimationComplete(true);
-
+  
     // If the model is ready, play greeting + speak AT THE SAME TIME
     if (modelRef.current) {
-      modelRef.current.greet();  // Greeting animation
+      // 1) Greeting animation + introduction speech
+      modelRef.current.greet(); 
       const introText = "I am Genesis, your physiotherapy assistant.";
       apiClient.speakWithBrowserTTS(introText);
       handleCaptionUpdate(introText);
-      
-      // If you still want to ask "How can I help you?" after 4s:
+  
+      // 2) After 4 seconds, ask "How can I help you?"
       setTimeout(() => {
         if (modelRef.current) {
           modelRef.current.talkingQuestion();
           const helpText = "How can I help you today?";
+  
+          // Optional tiny delay so the model is in talkingQuestion pose first
           setTimeout(() => {
             apiClient.speakWithBrowserTTS(helpText);
             handleCaptionUpdate(helpText);
           }, 500);
+  
+          // 3) After another 4 seconds, ask question #0
+          setTimeout(() => {
+            askQuestion(0);
+  
+            // 4) After 4 more seconds, ask question #1
+            setTimeout(() => {
+              askQuestion(1);
+  
+              // 5) After 4 more seconds, ask question #2
+              setTimeout(() => {
+                askQuestion(2);
+
+                // 6) After 4 more seconds, ask question #3
+                setTimeout(() => {
+                    const sorryText = "Oh my goodness, I'm sorry you're feeling that way. Let me think of a few exercises that might help you."
+                    apiClient.speakWithBrowserTTS(sorryText);
+                    handleCaptionUpdate(sorryText);
+                    setShowThinking(true);
+                }, 4000);
+
+              }, 4000);
+  
+            }, 4000);
+  
+          }, 4000);
         }
       }, 4000);
     }
-  };
+  };  
   
   // Function to update captions
   const handleCaptionUpdate = (text) => {
@@ -841,6 +910,9 @@ const VirtualPhysiotherapist = () => {
         </button>
       </div>
 
+      {/* <LoadingPopup isVisible={showLoadingPopup} /> */}
+
+
       {/* Chat Sidebar */}
       <ChatHistorySidebar 
         isVisible={showSidebar} 
@@ -872,6 +944,8 @@ const VirtualPhysiotherapist = () => {
       >
         {currentCaption}
       </div>
+
+      <ThinkingBox isVisible={showThinking} />
       
       <Canvas 
         camera={{ position: [0, 0, 4], fov: 60 }}

@@ -9,6 +9,8 @@ from datetime import datetime
 
 from elevenlabs import ElevenLabs
 from google import genai
+import asyncio
+
 
 from helpers import *
 
@@ -104,6 +106,13 @@ def treatment():
 
     # Up to date code
     gemini_key = os.environ.get("GEMINI_API_KEY")
+
+    # Ensure there is an active event loop
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
     client = genai.Client(api_key=gemini_key)
     response = client.models.generate_content(
         model='gemini-2.0-flash',

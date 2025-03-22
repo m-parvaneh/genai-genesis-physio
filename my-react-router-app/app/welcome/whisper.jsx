@@ -5,6 +5,7 @@ export const Whisper = ({ setQuestionNumber, questionNumber, ...props }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioStream, setAudioStream] = useState(null);
   const [response, setResponse] = useState(null); // Store the API response
+  const [socketResponse, setSocketResponse] = useState(0);
 
   const [recordedMessage, setRecordedMessage] = useState({
     q1: "",
@@ -12,6 +13,10 @@ export const Whisper = ({ setQuestionNumber, questionNumber, ...props }) => {
     q3: "",
   });
   const [blob, setBlob] = useState(null);
+
+  useEffect(() => {
+    toggleRecording();
+  }, [socketResponse]);
 
   // Function to update the dictionary
   const updateDictionary = (key, value) => {
@@ -65,7 +70,15 @@ export const Whisper = ({ setQuestionNumber, questionNumber, ...props }) => {
     }
   }, [recordedMessage]);
 
+  const fakeSocketResponse = () => {
+    console.log("cur resp" + socketResponse);
+    setSocketResponse((prev) => prev + 1);
+  };
+
   const toggleRecording = async () => {
+    if (socketResponse == 0) {
+      return;
+    }
     if (!isRecording) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -154,7 +167,7 @@ export const Whisper = ({ setQuestionNumber, questionNumber, ...props }) => {
       {/* Input Area */}
       <div className="flex items-center gap-4 max-w-3xl mx-auto w-full">
         <div className="flex-1 relative">
-          <button onClick={toggleRecording}>
+          <button onClick={fakeSocketResponse}>
             {isRecording ? "Stop Recording" : "Start Recording"}
           </button>
         </div>

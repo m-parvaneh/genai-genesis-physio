@@ -7,3 +7,4 @@ flask-socketio
 google
 google-genai
 playsound==1.2.2
+flask-cors

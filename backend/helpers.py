@@ -51,11 +51,11 @@ def apply_to_all_string_values(dictionary, function, client):
             # Recursively process nested dictionaries
             result[key] = apply_to_all_string_values(value, function, client)
         elif isinstance(value, str):
-            if key == "action":
-                result[key] = value 
+            result[key] = value 
+            if key == "action" or key == "exercise":
                 continue     
             # Apply the function to string values
-            result[key] = function(client, value)
+            result[f"{key}_audio"] = function(client, value)
         else:
             # Keep other types unchanged
             result[key] = value

@@ -52,10 +52,14 @@ def treatment():
         "intro": "We're going to start out with an exercise that's going to help improve the range of motion in your neck!"
         "steps": {
             "1": {
-                "action": "Tilt neck to left",
-                "description": "We are going to start by tilting our neck to the left toward our shoulder for a few seconds." 
+                "action": "Look straight",
+                "description": "Look directly at the camera." 
             },
             "2": {
+                "action": "Tilt neck to right",
+                "description": "Next, we are going to tilt our neck to the right toward our other shoulder for a few seconds."
+            },
+            "3": {
                 "action": "Tilt neck to right",
                 "description": "Next, we are going to tilt our neck to the right toward our other shoulder for a few seconds."
             }
@@ -85,6 +89,7 @@ def treatment():
 
     You have this list of actions at your disposal to put together an exercise:
     - Tilt neck to left
+    - Stand up straight
     - Tilt neck to right
     - Rotate neck to left 
     - Rotate neck to right
@@ -108,7 +113,7 @@ def treatment():
 
     Now, it's your turn, please generate a response in the same format as the JSON 
     payload above for the patient's issue. Please output only the JSON payload and no
-    other text around it (do not include markdown formatting like ```json).
+    other text around it (do not include markdown formatting like ```json). Please include 3 steps for the exercise.
     """
 
     # These might not be necessary anymore given that ElevenLabs is on the frontend
@@ -162,7 +167,6 @@ def handle_trigger(data):
     # You could add authentication check here
     print("Hello we are triggered")
     action = data.get('action', 'start')
-    print(action)
     
     if action == 'start':
         # Broadcast to all connected clients to start recording
@@ -172,6 +176,8 @@ def handle_trigger(data):
     elif action == 'stop':
         socketio.emit('audio_command', {'command': 'stop_recording'})
         return {'status': 'success', 'message': 'Stop recording command broadcast to all clients'}
+    elif action == 'attack':
+        socketio.emit('attack', {'command': 'ask_ok'})
     else:
         return {'status': 'error', 'message': 'Invalid action'}    
 
@@ -204,8 +210,8 @@ def handle_ping_event(json):
         'device_id': json.get('device_id', 'unknown'),
         'message': json.get('message', ''),
         'timestamp': json.get('timestamp', '')
-    }, broadcast=True, include_self=False)
+    }, broadcast=True, include_self=True)
 
 if __name__ == '__main__':
     # app.run(debug=True)
-    socketio.run(app, port=8000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=8000, debug=False)

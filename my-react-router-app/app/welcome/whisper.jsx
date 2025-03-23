@@ -16,9 +16,9 @@ export const Whisper = ({ setQuestionNumber, questionNumber, ...props }) => {
   const [blob, setBlob] = useState(null);
 
   useEffect(() => {
-    const newSocket = io("http:// :8000", {
-      transports: ["websocket"],
-      withCredentials: true, // Important if using CORS
+    const newSocket = io("http://0.0.0.0:8000", {
+      // transports: ["websocket"],
+      // withCredentials: true, // Important if using CORS
     });
 
     setSocket(newSocket);

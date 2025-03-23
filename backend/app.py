@@ -204,8 +204,8 @@ def handle_ping_event(json):
         'device_id': json.get('device_id', 'unknown'),
         'message': json.get('message', ''),
         'timestamp': json.get('timestamp', '')
-    }, broadcast=True, include_self=False)
+    }, broadcast=True, include_self=True)
 
 if __name__ == '__main__':
     # app.run(debug=True)
-    socketio.run(app, port=8000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=8000, debug=True)

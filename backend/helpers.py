@@ -2,14 +2,7 @@ import base64
 import json 
 import os
 import re 
-import requests
 import tempfile 
-import uuid
-
-from elevenlabs import ElevenLabs
-from playsound import playsound
-
-ELEVEN_LABS_URL = "https://api.elevenlabs.io/v1/text-to-speech/cgSgspJ2msm6clMCkdW9?output_format=mp3_44100_128"
 
 def extract_json_from_markdown(text):
     # Pattern to match JSON content between markdown code blocks

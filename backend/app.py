@@ -1,11 +1,9 @@
 # app.py
-import json
 import os
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
-from flask_cors import CORS, cross_origin
-from datetime import datetime
+from flask_cors import CORS
 
 from elevenlabs import ElevenLabs
 from google import genai
@@ -33,7 +31,6 @@ def treatment():
     Use an LLM to generate the correct treatment plan based on the 
     issue the user is experiencing. 
     """
-    print("Got into the function")
     # Set CORS headers for the preflight request
     if request.method == 'OPTIONS':
         # Allows requests from specified domains
@@ -116,10 +113,6 @@ def treatment():
     other text around it (do not include markdown formatting like ```json). Please include 3 steps for the exercise.
     """
 
-    # These might not be necessary anymore given that ElevenLabs is on the frontend
-    intro = data.get('intro', "Okay, I'm gonna show you an exercise to help you with this pain")
-    outro = data.get('outro', "Generate a message suggesting they should be ")
-
     # Up to date code
     gemini_key = os.environ.get("GEMINI_API_KEY")
     client = genai.Client(api_key=gemini_key)
@@ -140,32 +133,10 @@ def treatment():
 
     return jsonify(audio_payload), 200
 
-@app.route('/pose', methods=['POST', 'OPTIONS'])
-def pose_estimation(request):
-    pass
-
-# Route to accept request from button and emit notification to frontend client listening to socket
-# @app.route('/trigger-recording', methods=['POST'])
-# def trigger_recording():
-#     """Endpoint to trigger recording from an admin interface or external system."""
-#     # You could add authentication here - no way 
-#     action = request.json.get('action', 'start')
-    
-#     if action == 'start':
-#         # Broadcast to all connected clients to start recording
-#         socketio.emit('audio_command', {'command': 'start_recording'})
-#         return {'status': 'success', 'message': 'Start recording command sent to all clients'}
-#     elif action == 'stop':
-#         socketio.emit('audio_command', {'command': 'stop_recording'})
-#         return {'status': 'success', 'message': 'Stop recording command sent to all clients'}
-#     else:
-#         return {'status': 'error', 'message': 'Invalid action'}, 400
-
 @socketio.on('trigger_recording')
 def handle_trigger(data):
     """Handle recording trigger requests via WebSocket."""
     # You could add authentication check here
-    print("Hello we are triggered")
     action = data.get('action', 'start')
     
     if action == 'start':
@@ -180,18 +151,6 @@ def handle_trigger(data):
         socketio.emit('attack', {'command': 'ask_ok'})
     else:
         return {'status': 'error', 'message': 'Invalid action'}    
-
-# Probably not going to get used but whatever
-@socketio.on('audio_data')
-def handle_audio_data(data):
-    """Receive audio data from the client."""
-    # Here you would process or store the received audio data
-    # data might contain audio chunks in base64 format
-    print(f"Received audio data chunk of size: {len(data.get('audio', ''))}")
-    
-    # You might save this to a file, database, or process it
-    # For demonstration, we'll just acknowledge receipt
-    emit('audio_received', {'status': 'success'})
 
 @socketio.on('connect')
 def test_connect():
@@ -213,5 +172,4 @@ def handle_ping_event(json):
     }, broadcast=True, include_self=True)
 
 if __name__ == '__main__':
-    # app.run(debug=True)
     socketio.run(app, host='0.0.0.0', port=8000, debug=False)

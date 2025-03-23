@@ -304,7 +304,7 @@ const VirtualPhysiotherapist = () => {
     // Define the questions array
     const questions = [
       { text: "Let me see if i can help you out! Can you please tell me what kind of problem you're experiencing. Please make sure to tell me what part of your body is affected specifically, like your neck, lower back, knee, et cetera", animation: "talkingQuestion" },
-      { text: "Gotcha, now jow would you describe the severity of your pain? For example, is it more of a dull ache or sharp consistent pain?", animation: "talkingQuestion" },
+      { text: "Gotcha, now how would you describe the severity of your pain? For example, is it more of a dull ache or sharp consistent pain?", animation: "talkingQuestion" },
       { text: "Thank you for letting me know. Finally, are there any activities or movements that trigger the pain or make it worse?", animation: "talkingQuestion" }
     ];
 
@@ -412,12 +412,10 @@ const VirtualPhysiotherapist = () => {
             console.log("Treatment response:", data);
             
             // Store the treatment plan data
+            console.log("DEBUG " + data)
             setTreatmentPlan(data);
             
-            // After "thinking" for 4 seconds, start the exercise sequence
-            setTimeout(() => {
-                startExerciseSequence();
-            }, 4000);
+            
             
             } catch (err) {
             console.error("Error in treatment API call:", err);
@@ -432,6 +430,18 @@ const VirtualPhysiotherapist = () => {
         processResponses();
       }
     }, [questionStep]);
+
+
+     // Use effect to trigger slide-in and introduction on component mount
+     useEffect(() => {
+        // After "thinking" for 4 seconds, start the exercise sequence
+        if (treatmentPlan){
+            setTimeout(() => {
+                startExerciseSequence();
+            }, 2000);
+        }
+        
+      }, [treatmentPlan]);
 
     // Format transcriptions for treatment API
     const formatTranscriptions = () => {
@@ -581,7 +591,7 @@ const VirtualPhysiotherapist = () => {
         // First, play the intro audio from the treatment plan
         modelRef.current.talkingStanding();
 
-        console.log(treatmentPlan);
+        console.log("DEBUG2: " + treatmentPlan);
         
         if (treatmentPlan && treatmentPlan.intro) {
             // Play the intro audio (the base64 string should be stored in treatmentPlan.intro)
@@ -603,8 +613,9 @@ const VirtualPhysiotherapist = () => {
         
         // After intro, demonstrate first exercise
         setTimeout(() => {
+            console.log("DEBUG: after intro play next exercise for question number " + currentExerciseIndex)
             playNextExerciseStep();
-        }, 5000);
+        }, 10000);
         }
     };
 
@@ -658,6 +669,7 @@ const VirtualPhysiotherapist = () => {
         if (!treatmentPlan || !treatmentPlan.outro) {
         // Default outro behavior
         const congratsText = "Excellent work! You've completed all the exercises. This should help relieve your pain.";
+        console.log("DEBUG: played tts outro because there is no treatment plan, this is what we have: " + treatmentPlan)
         apiClient.speakWithBrowserTTS(congratsText);
         handleCaptionUpdate(congratsText);
         modelRef.current.talkingStanding();
@@ -814,122 +826,146 @@ const VirtualPhysiotherapist = () => {
       }
     }, [currentExercise, isThinking, currentExerciseIndex, exerciseStatuses, holdStartTime]);
 
-    // Enhanced evaluateHeadPose function to handle exercise validation
     const evaluateHeadPose = (pose, exercise) => {
-      // Skip if not enough confidence
-      if (pose.confidence < 0.65) {
-        setFeedback({
-          message: "Please face the camera more directly for better tracking",
-          status: "warning"
-        });
-        return;
-      }
-      
-      // If we're in exercise mode and not in a specific exercise
-      if (!isThinking && currentExerciseIndex >= 0 && !exerciseCompleted) {
-        switch (currentExerciseIndex) {
+        
+        // If we're in exercise mode and not in a specific exercise
+        if (!isThinking && currentExerciseIndex >= 0 && !exerciseCompleted) {
+          console.log("DEBUG: current index is "+currentExerciseIndex)
+          switch (currentExerciseIndex) {
             case 0: // Stand up straight
-            if (headPose.yaw < 10 && headPose.pitch < 10 && headPose.yaw > -10 && headPose.pitch > -10) {
-              // Mark first exercise as completed and activate second after a short delay
-              setTimeout(() => {
-                // Only proceed if we're still on the first exercise
-                if (currentExerciseIndex === 0) {
-                  const updatedStatuses = [...exerciseStatuses];
-                  updatedStatuses[0] = 'completed';
-                  updatedStatuses[1] = 'active';
-                  setExerciseStatuses(updatedStatuses);
-                  setCurrentExerciseIndex(1);
+              if (headPose.yaw < 10 && headPose.pitch < 10 && headPose.yaw > -10 && headPose.pitch > -10) {
+                console.log("DEBUG: passed the check for index:  "+currentExerciseIndex)
+
+                // Start timing the hold if not already started
+                if (!holdStartTime) {
+                  setHoldStartTime(Date.now());
+                  setFeedback({
+                    message: "Good posture! Keep holding for 5 seconds...",
+                    status: "good"
+                  });
+                } else {
+                  // Check if we've held for 5 seconds
+                  const holdDuration = (Date.now() - holdStartTime) / 1000;
                   
-                  // Play the next exercise step
-                  playNextExerciseStep();
+                  if (holdDuration >= 5) {
+                    // Mark first exercise as completed and activate second
+                    const updatedStatuses = [...exerciseStatuses];
+                    updatedStatuses[0] = 'completed';
+                    updatedStatuses[1] = 'active';
+                    setExerciseStatuses(updatedStatuses);
+                    setCurrentExerciseIndex(1);
+                    setHoldStartTime(null);
+                    
+                    // Play the next exercise step
+                    console.log("DEBUG: case 0 play next exercise for question number " + currentExerciseIndex);
+                    playNextExerciseStep();
+                  }
                 }
-              }, 2000); // Wait 2 seconds to confirm pose
+              } else {
+                // Reset hold timer if user moves out of position
+                if (holdStartTime) {
+                  setHoldStartTime(null);
+                  setFeedback({
+                    message: "Try to face the camera directly with your head straight",
+                    status: "warning"
+                  });
+                }
+              }
+              break;
               
-              setFeedback({
-                message: "Good posture! Hold still...",
-                status: "good"
-              });
-            }
-            break;
-            
-          case 1: // Tilt head to the left
-            if (pose.roll < -15) { // Negative roll indicates left tilt
-              // Start timing the hold if not already started
-              if (!holdStartTime) {
-                setHoldStartTime(Date.now());
-                setFeedback({
-                  message: "Good! Keep holding for 5 seconds...",
-                  status: "good"
-                });
-              } else {
-                // Check if we've held for 5 seconds
-                const holdDuration = (Date.now() - holdStartTime) / 1000;
-                
-                if (holdDuration >= 5) {
-                  // Mark second exercise as completed and activate third
-                  const updatedStatuses = [...exerciseStatuses];
-                  updatedStatuses[1] = 'completed';
-                  updatedStatuses[2] = 'active';
-                  setExerciseStatuses(updatedStatuses);
-                  setCurrentExerciseIndex(2);
-                  setHoldStartTime(null);
+            case 1: // Tilt head to the left
+              if (pose.roll < -15) { // Negative roll indicates left tilt
+                // Start timing the hold if not already started
+                if (!holdStartTime) {
+                  setHoldStartTime(Date.now());
+                  setFeedback({
+                    message: "Good! Keep holding for 5 seconds...",
+                    status: "good"
+                  });
+                } else {
+                  // Check if we've held for 5 seconds
+                  const holdDuration = (Date.now() - holdStartTime) / 1000;
                   
-                  // Avatar demonstrates tilting head to the right
-                  if (modelRef.current) {
-                    const rightTiltText = "Perfect! Now tilt your head to the right and hold for 5 seconds.";
-                    apiClient.speakWithBrowserTTS(rightTiltText);
-                    handleCaptionUpdate(rightTiltText);
-                    setTimeout(() => modelRef.current.neckStretchRight(), 500);
+                  if (holdDuration >= 5) {
+                    // Mark second exercise as completed and activate third
+                    const updatedStatuses = [...exerciseStatuses];
+                    updatedStatuses[1] = 'completed';
+                    updatedStatuses[2] = 'active';
+                    setExerciseStatuses(updatedStatuses);
+                    setCurrentExerciseIndex(2);
+                    setHoldStartTime(null);
+                    
+                    // Avatar demonstrates tilting head to the right
+                    if (modelRef.current) {
+                      const rightTiltText = "Perfect! Now tilt your head to the right and hold for 5 seconds.";
+                      // apiClient.generateSpeech(rightTiltText);
+                      console.log("DEBUG: case 1 play next exercise for question number " + currentExerciseIndex)
+                      playNextExerciseStep();
+                      handleCaptionUpdate(rightTiltText);
+                      setTimeout(() => modelRef.current.neckStretchRight(), 500);
+                    }
                   }
                 }
-              }
-            } else {
-              // Reset hold timer if user moves out of position
-              if (holdStartTime) {
-                setHoldStartTime(null);
-              }
-            }
-            break;
-            
-          case 2: // Tilt head to the right
-            if (pose.roll > 15) { // Positive roll indicates right tilt
-              // Start timing the hold if not already started
-              if (!holdStartTime) {
-                setHoldStartTime(Date.now());
               } else {
-                // Check if we've held for 5 seconds
-                const holdDuration = (Date.now() - holdStartTime) / 1000;
-                
-                if (holdDuration >= 5) {
-                  // Mark third exercise as completed
-                  const updatedStatuses = [...exerciseStatuses];
-                  updatedStatuses[2] = 'completed';
-                  setExerciseStatuses(updatedStatuses);
-                  setExerciseCompleted(true);
+                // Reset hold timer if user moves out of position
+                if (holdStartTime) {
                   setHoldStartTime(null);
-                  
-                  // Avatar congratulates the user
-                  if (modelRef.current) {
-                    modelRef.current.idle();
-                    setTimeout(() => {
-                      const congratsText = "Excellent work! You've completed all the exercises. This should help relieve your neck pain.";
-                      apiClient.speakWithBrowserTTS(congratsText);
-                      handleCaptionUpdate(congratsText);
-                      modelRef.current.talkingStanding();
-                    }, 1000);
-                  }
+                  setFeedback({
+                    message: "Try to tilt your head to the left",
+                    status: "warning"
+                  });
                 }
               }
-            } else {
-              // Reset hold timer if user moves out of position
-              if (holdStartTime) {
-                setHoldStartTime(null);
+              break;
+              
+            case 2: // Tilt head to the right
+              if (pose.roll > 15) { // Positive roll indicates right tilt
+                // Start timing the hold if not already started
+                if (!holdStartTime) {
+                  setHoldStartTime(Date.now());
+                  setFeedback({
+                    message: "Good! Keep holding for 5 seconds...",
+                    status: "good"
+                  });
+                } else {
+                  // Check if we've held for 5 seconds
+                  const holdDuration = (Date.now() - holdStartTime) / 1000;
+                  
+                  if (holdDuration >= 5) {
+                    // Mark third exercise as completed
+                    const updatedStatuses = [...exerciseStatuses];
+                    updatedStatuses[2] = 'completed';
+                    setExerciseStatuses(updatedStatuses);
+                    setExerciseCompleted(true);
+                    setHoldStartTime(null);
+                    
+                    // Avatar congratulates the user
+                    if (modelRef.current) {
+                      modelRef.current.idle();
+                      setTimeout(() => {
+                        const congratsText = "Excellent work! You've completed all the exercises. This should help relieve your neck pain.";
+                        // apiClient.generateSpeech(congratsText);
+                        console.log("DEBUG: case 2 play next exercise for question number " + currentExerciseIndex)
+                        playNextExerciseStep();
+                        handleCaptionUpdate(congratsText);
+                        modelRef.current.talkingStanding();
+                      }, 1000);
+                    }
+                  }
+                }
+              } else {
+                // Reset hold timer if user moves out of position
+                if (holdStartTime) {
+                  setHoldStartTime(null);
+                  setFeedback({
+                    message: "Try to tilt your head to the right",
+                    status: "warning"
+                  });
+                }
               }
-            }
-            break;
+              break;
+          }
         }
-      }
-      
       // Original pose evaluation for other exercises...
       else if (exercise) {
         // Keep the original exercise evaluation logic here

@@ -134,7 +134,7 @@ const ThinkingBox = ({
           margin: 0,
           letterSpacing: '-0.3px'
         }}>
-          {isThinking ? 'Genesis is thinking' : 'Neck Stretching Exercises'}
+          {isThinking ? 'Rekovery is thinking' : 'Neck Stretching Exercises'}
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {isThinking && (

@@ -597,9 +597,9 @@ const VirtualPhysiotherapist = () => {
             playBase64Audio(treatmentPlan.intro_audio);
             
             // Update captions with the text content
-            if (treatmentPlan.intro.text) {
-            handleCaptionUpdate(treatmentPlan.intro.text);
-            console.log(treatmentPlan.intro.text);
+            if (treatmentPlan.intro) {
+            handleCaptionUpdate(treatmentPlan.intro);
+            console.log(treatmentPlan.intro);
             } else {
             handleCaptionUpdate("I've found some exercises that should help with your condition.");
             }
@@ -680,11 +680,12 @@ const VirtualPhysiotherapist = () => {
         
         // Play the outro audio
         modelRef.current.talkingStanding();
+        handleCaptionUpdate(treatmentPlan.outrot);
         playBase64Audio(treatmentPlan.outro_audio);
         
         // Update captions with the text content
-        if (treatmentPlan.outro.text) {
-        handleCaptionUpdate(treatmentPlan.outro.text);
+        if (treatmentPlan.outro) {
+        handleCaptionUpdate(treatmentPlan.outrot);
         }
     };
     
@@ -910,7 +911,7 @@ const VirtualPhysiotherapist = () => {
                       // apiClient.generateSpeech(rightTiltText);
                       console.log("DEBUG: case 1 play next exercise for question number " + currentStepIndex)
                       playNextExerciseStep();
-                      handleCaptionUpdate(rightTiltText);
+                      // handleCaptionUpdate(rightTiltText);
                       setTimeout(() => modelRef.current.neckStretchRight(), 500);
                     }
                   }
@@ -952,11 +953,11 @@ const VirtualPhysiotherapist = () => {
                     if (modelRef.current) {
                       modelRef.current.idle();
                       setTimeout(() => {
-                        const congratsText = "Excellent work! You've completed all the exercises. This should help relieve your neck pain.";
+                        // const congratsText = "Excellent work! You've completed all the exercises. This should help relieve your neck pain.";
                         // apiClient.generateSpeech(congratsText);
                         console.log("DEBUG: case 2 play next exercise for question number " + currentStepIndex)
                         playNextExerciseStep();
-                        handleCaptionUpdate(congratsText);
+                        // handleCaptionUpdate(congratsText);
                         modelRef.current.talkingStanding();
                       }, 1000);
                     }
@@ -1377,7 +1378,7 @@ const VirtualPhysiotherapist = () => {
         )}
         
         {/* Status indicator for recording */}
-        {isRecording && (
+        {/* {isRecording && (
           <div style={{
             position: 'absolute',
             bottom: 40,
@@ -1401,7 +1402,7 @@ const VirtualPhysiotherapist = () => {
             }} />
             <span>Recording...</span>
           </div>
-        )}
+        )} */}
         
         {/* Add global styles for animations */}
         <style>

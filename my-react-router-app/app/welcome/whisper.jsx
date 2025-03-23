@@ -1,8 +1,8 @@
 import { useRef, useEffect, useState } from "react";
-
+import { io } from "socket.io-client";
 export const Whisper = ({ setQuestionNumber, questionNumber, ...props }) => {
-  const input = useRef();
   const [isRecording, setIsRecording] = useState(false);
+  const [socket, setSocket] = useState(null);
   const [audioStream, setAudioStream] = useState(null);
   const [response, setResponse] = useState(null); // Store the API response
   const [socketResponse, setSocketResponse] = useState(0);
@@ -12,7 +12,25 @@ export const Whisper = ({ setQuestionNumber, questionNumber, ...props }) => {
     q2: "",
     q3: "",
   });
+
   const [blob, setBlob] = useState(null);
+
+  useEffect(() => {
+    const newSocket = io("http:// :8000", {
+      transports: ["websocket"],
+      withCredentials: true, // Important if using CORS
+    });
+
+    setSocket(newSocket);
+
+    newSocket.on("ping_received", (data) => {
+      console.log("received");
+      fakeSocketResponse();
+    });
+    console.log("set up socket");
+
+    return () => newSocket.disconnect(); // Cleanup on unmount
+  }, []);
 
   useEffect(() => {
     toggleRecording();
@@ -26,6 +44,10 @@ export const Whisper = ({ setQuestionNumber, questionNumber, ...props }) => {
     }));
   };
 
+  const temp_json = { s: "s" };
+  const ping = () => {
+    socket.emit("ping_event", temp_json);
+  };
   // Function to call the API
   const fetchTreatment = async (message) => {
     try {
@@ -167,9 +189,9 @@ export const Whisper = ({ setQuestionNumber, questionNumber, ...props }) => {
       {/* Input Area */}
       <div className="flex items-center gap-4 max-w-3xl mx-auto w-full">
         <div className="flex-1 relative">
-          <button onClick={fakeSocketResponse}>
+          {/* <button onClick={ping}>
             {isRecording ? "Stop Recording" : "Start Recording"}
-          </button>
+          </button> */}
         </div>
       </div>
       {blob && (

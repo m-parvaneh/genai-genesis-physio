@@ -1028,6 +1028,7 @@ const evaluateHeadPose = (pose, exercise) => {
         exercises={exercises}
         currentExerciseIndex={currentExerciseIndex}
         exerciseStatuses={exerciseStatuses}
+        onClose={() => setShowThinking(false)}
         />      
       <Canvas 
         camera={{ position: [0, 0, 4], fov: 60 }}

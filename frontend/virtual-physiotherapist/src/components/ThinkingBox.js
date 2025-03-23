@@ -1,7 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
-const ThinkingBox = ({ isVisible, isThinking = true, exercises = [], currentExerciseIndex = -1, exerciseStatuses = [] }) => {
+const ThinkingBox = ({ 
+  isVisible, 
+  isThinking = true, 
+  exercises = [], 
+  currentExerciseIndex = -1, 
+  exerciseStatuses = [],
+  onClose
+}) => {
   const [dots, setDots] = useState('');
+  const [position, setPosition] = useState({ x: '12%', y: 'calc(50% - 250px)' });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const boxRef = useRef(null);
 
   // Animate the loading dots during thinking phase
   useEffect(() => {
@@ -16,6 +27,48 @@ const ThinkingBox = ({ isVisible, isThinking = true, exercises = [], currentExer
 
     return () => clearInterval(interval);
   }, [isVisible, isThinking]);
+
+  // Handle mouse events for dragging
+  const handleMouseDown = (e) => {
+    if (boxRef.current) {
+      const boundingRect = boxRef.current.getBoundingClientRect();
+      setDragOffset({
+        x: e.clientX - boundingRect.left,
+        y: e.clientY - boundingRect.top
+      });
+      setIsDragging(true);
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging) {
+      // Calculate new position based on mouse position and drag offset
+      setPosition({
+        x: `${e.clientX - dragOffset.x}px`,
+        y: `${e.clientY - dragOffset.y}px`
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Add and remove event listeners
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    }
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
 
   if (!isVisible) return null;
 
@@ -44,11 +97,11 @@ const ThinkingBox = ({ isVisible, isThinking = true, exercises = [], currentExer
 
   return (
     <div
+      ref={boxRef}
       style={{
         position: 'absolute',
-        top: 'calc(50% - 250px)',
-        left: '25%',
-        transform: 'translateX(-50%)',
+        top: position.y,
+        left: position.x,
         width: '360px',
         backgroundColor: 'white',
         color: '#333',
@@ -59,15 +112,21 @@ const ThinkingBox = ({ isVisible, isThinking = true, exercises = [], currentExer
         fontWeight: '500',
         boxShadow: '0 6px 18px rgba(0, 0, 0, 0.15)',
         zIndex: 30,
-        border: '1px solid #eee'
+        border: '1px solid #eee',
+        cursor: isDragging ? 'grabbing' : 'auto',
+        transform: 'none'
       }}
     >
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '16px' 
-      }}>
+      <div 
+        style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '16px',
+          cursor: 'grab'
+        }}
+        onMouseDown={handleMouseDown}
+      >
         <h3 style={{ 
           fontSize: '18px', 
           fontWeight: 600, 
@@ -77,17 +136,50 @@ const ThinkingBox = ({ isVisible, isThinking = true, exercises = [], currentExer
         }}>
           {isThinking ? 'Genesis is thinking' : 'Neck Stretching Exercises'}
         </h3>
-        {isThinking && (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '6px' 
-          }}>
-            <span className="dot"></span>
-            <span className="dot"></span>
-            <span className="dot"></span>
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {isThinking && (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px' 
+            }}>
+              <span className="dot"></span>
+              <span className="dot"></span>
+              <span className="dot"></span>
+            </div>
+          )}
+          <button 
+            onClick={onClose}
+            style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: '6px',
+              backgroundColor: '#f0f0f0',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#555',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              padding: 0
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#ff6b6b'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#ff6b6b';
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = '#f0f0f0';
+              e.currentTarget.style.color = '#555';
+            }}
+          >
+            ×
+          </button>
+        </div>
       </div>
 
       <p style={{ 

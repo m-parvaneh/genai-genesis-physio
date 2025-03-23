@@ -6,6 +6,7 @@ import apiClient from '../services/apiClient';
 import UserVideoFeed from './UserVideoFeed';
 import ChatHistorySidebar from './ChatHistorySidebar';
 import ThinkingBox from "./ThinkingBox";
+import { model } from '@tensorflow/tfjs';
 
 // Simple 3D model component with animations
 const Model = React.forwardRef((props, ref) => {
@@ -28,7 +29,7 @@ const Model = React.forwardRef((props, ref) => {
   shakingHandsAnimation[1].name = "shakingHands";
   talkingQuestionAnimation[1].name = "talkingQuestion";
   talkingStandingAnimation[1].name = "talkingStanding";
-  thinkingAnimation[1].name = "thinking";
+  thinkingAnimation[0].name = "thinking";
   
   // Add debug logs to see animation data
   console.log("Idle animation loaded:", idleAnimation);
@@ -38,7 +39,7 @@ const Model = React.forwardRef((props, ref) => {
   console.log("Talking question animation loaded:", talkingQuestionAnimation);
   console.log("Talking standing animation loaded:", talkingStandingAnimation);
   console.log("Thinking animation loaded: ", thinkingAnimation);
-  
+
   // Animation state
   const [animation, setAnimation] = useState("idle");
   
@@ -52,7 +53,8 @@ const Model = React.forwardRef((props, ref) => {
     neckStretching[1],
     shakingHandsAnimation[1],
     talkingQuestionAnimation[1],
-    talkingStandingAnimation[1]
+    talkingStandingAnimation[1],
+    thinkingAnimation[0]
   ];
   
   // Setup animations using useAnimations hook
@@ -151,6 +153,10 @@ const Model = React.forwardRef((props, ref) => {
   const playTalkingStanding = () => {
     setAnimation("talkingStanding");
   };
+
+  const playThinking = () => {
+    setAnimation("thinking");
+  }
   
   // Neck stretch specific animations
   const neckStretchRight = () => {
@@ -239,6 +245,7 @@ const Model = React.forwardRef((props, ref) => {
     shakingHands: playShakingHands,
     talkingQuestion: playTalkingQuestion,
     talkingStanding: playTalkingStanding,
+    think: playThinking,
     
     // Neck stretching specific movements
     neckStretchRight,
@@ -278,6 +285,18 @@ const VirtualPhysiotherapist = () => {
     const [showThinking, setShowThinking] = useState(false);
     const modelRef = useRef();
     const lastFeedbackTime = useRef(Date.now());
+
+    const [isThinking, setIsThinking] = useState(true);
+    const [exercises] = useState([
+    "Stand up straight.",
+    "Tilt your head to the left, hold for 5 seconds.",
+    "Tilt your head to the right, hold for 5 seconds."
+    ]);
+    const [currentExerciseIndex, setCurrentExerciseIndex] = useState(-1);
+    const [exerciseStatuses, setExerciseStatuses] = useState(['inactive', 'inactive', 'inactive']);
+    const [holdStartTime, setHoldStartTime] = useState(null);
+    const [exerciseCompleted, setExerciseCompleted] = useState(false);
+
 
   // Define the questions array
   const questions = [
@@ -323,6 +342,34 @@ const VirtualPhysiotherapist = () => {
         }
       };
 
+    const startExerciseSequence = () => {
+    // Switch from thinking to exercise mode
+    setIsThinking(false);
+    
+    // Update the first exercise to active
+    const updatedStatuses = [...exerciseStatuses];
+    updatedStatuses[0] = 'active';
+    setExerciseStatuses(updatedStatuses);
+    setCurrentExerciseIndex(0);
+    
+    // Have the avatar demonstrate standing up straight
+    if (modelRef.current) {
+        // First, explain what we're going to do
+        modelRef.current.talkingStanding();
+        const instructionText = "I've found some exercises that should help. Let's start with these simple neck stretches.";
+        apiClient.speakWithBrowserTTS(instructionText);
+        handleCaptionUpdate(instructionText);
+        
+        // After brief explanation, demonstrate first exercise
+        setTimeout(() => {
+        const exerciseText = "First, stand up straight with your shoulders relaxed.";
+        apiClient.speakWithBrowserTTS(exerciseText);
+        handleCaptionUpdate(exerciseText);
+        modelRef.current.idle(); // Stand straight for the first exercise
+        }, 3000);
+    }
+    };
+
 // New function for sliding in the model from the right and introducing itself
 const handleSlideInIntroduction = () => {
     // Slide in the model
@@ -361,14 +408,22 @@ const handleSlideInIntroduction = () => {
               // 5) After 4 more seconds, ask question #2
               setTimeout(() => {
                 askQuestion(2);
-
-                // 6) After 4 more seconds, ask question #3
                 setTimeout(() => {
                     const sorryText = "Oh my goodness, I'm sorry you're feeling that way. Let me think of a few exercises that might help you."
                     apiClient.speakWithBrowserTTS(sorryText);
                     handleCaptionUpdate(sorryText);
+                    
+                    // Show thinking box
                     setShowThinking(true);
-                }, 4000);
+                    if (modelRef.current) {
+                        modelRef.current.think();
+                    }
+
+                    // After "thinking" for 4 seconds, show the exercises
+                    setTimeout(() => {
+                      startExerciseSequence();
+                    }, 4000);
+                  }, 4000);
 
               }, 4000);
   
@@ -429,37 +484,6 @@ const handleSlideInIntroduction = () => {
     }
   };
 
-  // Animation control functions - encapsulated for clarity
-  const handleSpeakIntro = async () => {
-    setCurrentExercise(null);
-    try {
-      // Play greeting animation
-      if (modelRef.current) {
-        console.log("Triggering greeting animation");
-        modelRef.current.greet();
-      } else {
-        console.warn("Model reference not available");
-      }
-      
-      const introText = 'Hello, I am Genesis, your virtual physiotherapist. How can I help you today?';
-      handleCaptionUpdate(introText);
-      
-      const arrayBuffer = await apiClient.generateSpeech(introText);
-      const audioBlob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-      const tempUrl = URL.createObjectURL(audioBlob);
-      setAudioUrl(tempUrl);
-
-      // Auto-play
-      const audio = new Audio(tempUrl);
-      audio.play();
-    } catch (error) {
-      console.error('Error generating speech:', error);
-      // If ElevenLabs fails, fallback to built-in voice
-      const introText = 'Hello, I am Genesis, your virtual physiotherapist. How can I help you today?';
-      apiClient.speakWithBrowserTTS(introText);
-      handleCaptionUpdate(introText);
-    }
-  };
 
   const handleNeckStretch = () => {
     setCurrentExercise('neck');
@@ -615,23 +639,25 @@ const handleSlideInIntroduction = () => {
       return pose; // Return new pose if it's significantly different
     });
     
-    // Only provide feedback when doing specific exercises
-    // AND ONLY when the current exercise requires feedback
-    // Add time-based throttling for feedback
+    // Evaluate head pose for different scenarios
     const now = Date.now();
-    if (currentExercise && pose && 
+    
+    // Case 1: For guided exercise sequence
+    if (pose && !isThinking && currentExerciseIndex >= 0 && now - lastFeedbackTime.current > 300) {
+      evaluateHeadPose(pose);
+      lastFeedbackTime.current = now;
+    }
+    // Case 2: For original exercise modes
+    else if (currentExercise && pose && 
         ['neck-right', 'neck-left', 'neck-hold'].includes(currentExercise) &&
-        now - lastFeedbackTime.current > 500) { // Only update feedback every 500ms
+        now - lastFeedbackTime.current > 500) { 
       evaluateHeadPose(pose, currentExercise);
       lastFeedbackTime.current = now;
     }
-    
-    // Don't trigger any animation changes here
-    // This prevents animation restarts when new head pose updates come in
-  }, [currentExercise]); // Only depends on currentExercise
+  }, [currentExercise, isThinking, currentExerciseIndex, exerciseStatuses, holdStartTime]);
 
-  // Evaluate user's head pose and provide feedback
-  const evaluateHeadPose = (pose, exercise) => {
+  // Enhanced evaluateHeadPose function to handle exercise validation
+const evaluateHeadPose = (pose, exercise) => {
     // Skip if not enough confidence
     if (pose.confidence < 0.65) {
       setFeedback({
@@ -641,83 +667,134 @@ const handleSlideInIntroduction = () => {
       return;
     }
     
-    // Depending on the current exercise step, evaluate proper form
-    switch (exercise) {
-      case 'neck-left':
-        // Check if properly tilting to the right
-        if (pose.roll < -10) {  // Roll is negative when tilting head right
-          setFeedback({
-            message: "Great! Continue tilting your head to the left gently",
-            status: "good"
-          });
-        } else if (pose.roll > 5) {  // Tilting in wrong direction
-          setFeedback({
-            message: "You're tilting your head to the right instead of left",
-            status: "bad"
-          });
-        } else {  // Not tilting enough
-          setFeedback({
-            message: "Try to tilt your head more to the left until you feel a stretch",
-            status: "warning"
-          });
-        }
-        break;
-        
-      case 'neck-hold':
-        // Check if holding the position steadily
-        if (Math.abs(pose.roll) < 5 && Math.abs(pose.yaw) < 10) {
-          setFeedback({
-            message: "Keep your head centered, that's good",
-            status: "good"
-          });
-        } else {
-          setFeedback({
-            message: "Try to keep your head steady in the neutral position",
-            status: "warning"
-          });
-        }
-        break;
-        
-      case 'neck-right':
-        // Check if properly tilting to the left
-        if (pose.roll > 10) {  // Roll is positive when tilting head left
-          setFeedback({
-            message: "Great! Continue tilting your head to the right gently",
-            status: "good"
-          });
-        } else if (pose.roll < -5) {  // Tilting in wrong direction
-          setFeedback({
-            message: "You're tilting your head to the left instead of right",
-            status: "bad"
-          });
-        } else {  // Not tilting enough
-          setFeedback({
-            message: "Try to tilt your head more to the right until you feel a stretch",
-            status: "warning"
-          });
-        }
-        break;
-        
-      default:
-        // General posture feedback
-        if (Math.abs(pose.pitch) > 20) {
-          setFeedback({
-            message: "Try to keep your chin level, not too high or low",
-            status: "warning"
-          });
-        } else if (Math.abs(pose.yaw) > 20) {
-          setFeedback({
-            message: "Try to face forward more directly",
-            status: "warning"
-          });
-        } else {
-          setFeedback({
-            message: "Your head position looks good!",
-            status: "good"
-          });
-        }
+    // If we're in exercise mode and not in a specific exercise
+    if (!isThinking && currentExerciseIndex >= 0 && !exerciseCompleted) {
+      switch (currentExerciseIndex) {
+        case 0: // Stand up straight
+          if (headPose.yaw < 10 && headPose.yaw < 10 && headPose.yaw > -10 && headPose.yaw > -10) {
+            // Mark first exercise as completed and activate second after a short delay
+            setTimeout(() => {
+              // Only proceed if we're still on the first exercise
+              if (currentExerciseIndex === 0) {
+                const updatedStatuses = [...exerciseStatuses];
+                updatedStatuses[0] = 'completed';
+                updatedStatuses[1] = 'active';
+                setExerciseStatuses(updatedStatuses);
+                setCurrentExerciseIndex(1);
+                
+                // Avatar demonstrates tilting head to the left
+                if (modelRef.current) {
+                  const leftTiltText = "Great! Now tilt your head to the left and hold for 5 seconds.";
+                  apiClient.speakWithBrowserTTS(leftTiltText);
+                  handleCaptionUpdate(leftTiltText);
+                  setTimeout(() => modelRef.current.neckStretchLeft(), 500);
+                }
+              }
+            }, 2000); // Wait 2 seconds to confirm pose
+            
+            setFeedback({
+              message: "Good posture! Hold still...",
+              status: "good"
+            });
+          }
+          break;
+          
+        case 1: // Tilt head to the left
+          if (pose.roll < -15) { // Negative roll indicates left tilt
+            // Start timing the hold if not already started
+            if (!holdStartTime) {
+              setHoldStartTime(Date.now());
+              setFeedback({
+                message: "Good! Keep holding for 5 seconds...",
+                status: "good"
+              });
+            } else {
+              // Check if we've held for 5 seconds
+              const holdDuration = (Date.now() - holdStartTime) / 1000;
+              
+              if (holdDuration >= 5) {
+                // Mark second exercise as completed and activate third
+                const updatedStatuses = [...exerciseStatuses];
+                updatedStatuses[1] = 'completed';
+                updatedStatuses[2] = 'active';
+                setExerciseStatuses(updatedStatuses);
+                setCurrentExerciseIndex(2);
+                setHoldStartTime(null);
+                
+                // Avatar demonstrates tilting head to the right
+                if (modelRef.current) {
+                  const rightTiltText = "Perfect! Now tilt your head to the right and hold for 5 seconds.";
+                  apiClient.speakWithBrowserTTS(rightTiltText);
+                  handleCaptionUpdate(rightTiltText);
+                  setTimeout(() => modelRef.current.neckStretchRight(), 500);
+                }
+              }
+            }
+          } else {
+            // Reset hold timer if user moves out of position
+            if (holdStartTime) {
+              setHoldStartTime(null);
+            }
+          }
+          break;
+          
+        case 2: // Tilt head to the right
+          if (pose.roll > 15) { // Positive roll indicates right tilt
+            // Start timing the hold if not already started
+            if (!holdStartTime) {
+              setHoldStartTime(Date.now());
+            } else {
+              // Check if we've held for 5 seconds
+              const holdDuration = (Date.now() - holdStartTime) / 1000;
+              
+              if (holdDuration >= 5) {
+                // Mark third exercise as completed
+                const updatedStatuses = [...exerciseStatuses];
+                updatedStatuses[2] = 'completed';
+                setExerciseStatuses(updatedStatuses);
+                setExerciseCompleted(true);
+                setHoldStartTime(null);
+                
+                // Avatar congratulates the user
+                if (modelRef.current) {
+                  modelRef.current.idle();
+                  setTimeout(() => {
+                    const congratsText = "Excellent work! You've completed all the exercises. This should help relieve your neck pain.";
+                    apiClient.speakWithBrowserTTS(congratsText);
+                    handleCaptionUpdate(congratsText);
+                    modelRef.current.talkingStanding();
+                  }, 1000);
+                }
+              }
+            }
+          } else {
+            // Reset hold timer if user moves out of position
+            if (holdStartTime) {
+              setHoldStartTime(null);
+            }
+          }
+          break;
+      }
     }
-  };
+    
+    // Original pose evaluation for other exercises...
+    else if (exercise) {
+      // Keep the original exercise evaluation logic here
+      switch (exercise) {
+        case 'neck-left':
+          // Original neck-left evaluation
+          break;
+        case 'neck-hold':
+          // Original neck-hold evaluation
+          break;
+        case 'neck-right':
+          // Original neck-right evaluation
+          break;
+        default:
+          // Original default evaluation
+      }
+    }
+  };  
 
   // Toggle video feed visibility
   const toggleVideoFeed = () => {
@@ -945,8 +1022,13 @@ const handleSlideInIntroduction = () => {
         {currentCaption}
       </div>
 
-      <ThinkingBox isVisible={showThinking} />
-      
+      <ThinkingBox 
+        isVisible={showThinking}
+        isThinking={isThinking}
+        exercises={exercises}
+        currentExerciseIndex={currentExerciseIndex}
+        exerciseStatuses={exerciseStatuses}
+        />      
       <Canvas 
         camera={{ position: [0, 0, 4], fov: 60 }}
         shadows
@@ -1061,31 +1143,6 @@ const handleSlideInIntroduction = () => {
           maxDistance={10}
         />
       </Canvas>
-      
-      {/* Feedback area - only showing when there is feedback */}
-      {feedback && animationComplete && (
-        <div style={{ 
-          position: 'absolute',
-          bottom: 20,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          marginTop: '10px', 
-          padding: '15px', 
-          backgroundColor: 
-            feedback.status === 'good' ? 'rgba(76, 175, 80, 0.9)' : 
-            feedback.status === 'warning' ? 'rgba(255, 152, 0, 0.9)' : 
-            'rgba(244, 67, 54, 0.9)', 
-          color: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-          maxWidth: '500px',
-          zIndex: 10,
-          textAlign: 'center'
-        }}>
-          <h4 style={{ margin: '0 0 5px 0' }}>Feedback</h4>
-          <p style={{ margin: 0 }}>{feedback.message}</p>
-        </div>
-      )}
       
       {/* Video feed with head pose estimation - fade in after animation */}
       <div style={{

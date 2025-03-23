@@ -406,18 +406,18 @@ const UserVideoFeed = memo(({ onHeadPoseUpdate }) => {
   };
 
   // Use React.memo for UI components that don't need to re-render often
-  const StatusIndicator = React.memo(({ status }) => (
-    <div style={{
-      fontSize: '12px',
-      marginTop: '5px',
-      padding: '5px',
-      backgroundColor: 'rgba(0,0,0,0.1)',
-      borderRadius: '3px',
-      textAlign: 'center'
-    }}>
-      Status: {status}
-    </div>
-  ));
+//   const StatusIndicator = React.memo(({ status }) => (
+//     <div style={{
+//       fontSize: '12px',
+//       marginTop: '5px',
+//       padding: '5px',
+//       backgroundColor: 'rgba(0,0,0,0.1)',
+//       borderRadius: '3px',
+//       textAlign: 'center'
+//     }}>
+//       Status: {status}
+//     </div>
+//   ));
 
   return (
     <div className="user-video-feed" style={{ position: 'relative' }}>
@@ -469,7 +469,7 @@ const UserVideoFeed = memo(({ onHeadPoseUpdate }) => {
         </div>
       )}
       
-      <div style={{ position: 'relative', width: '100%', maxWidth: '320px' }}>
+      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
         <video
           ref={videoRef}
           autoPlay
@@ -492,7 +492,7 @@ const UserVideoFeed = memo(({ onHeadPoseUpdate }) => {
         />
       </div>
       
-      <StatusIndicator status={status} />
+      {/* <StatusIndicator status={status} /> */}
     </div>
   );
 });

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 
-const ThinkingBox = ({ isVisible }) => {
+const ThinkingBox = ({ isVisible, isThinking = true, exercises = [], currentExerciseIndex = -1, exerciseStatuses = [] }) => {
   const [dots, setDots] = useState('');
 
-  // Animate the loading dots
+  // Animate the loading dots during thinking phase
   useEffect(() => {
-    if (!isVisible) return;
+    if (!isVisible || !isThinking) return;
 
     const interval = setInterval(() => {
       setDots(prev => {
@@ -15,15 +15,38 @@ const ThinkingBox = ({ isVisible }) => {
     }, 500);
 
     return () => clearInterval(interval);
-  }, [isVisible]);
+  }, [isVisible, isThinking]);
 
   if (!isVisible) return null;
+
+  // Determine the appropriate color for each exercise based on its status
+  const getStatusColor = (index) => {
+    if (!exerciseStatuses || !exerciseStatuses[index]) return '#f5f5f5'; // Default gray
+    
+    switch (exerciseStatuses[index]) {
+      case 'inactive': return '#f5f5f5'; // Gray
+      case 'active': return '#FFD700'; // Yellow
+      case 'completed': return '#4CAF50'; // Green
+      default: return '#f5f5f5';
+    }
+  };
+
+  const getTextColor = (index) => {
+    if (!exerciseStatuses || !exerciseStatuses[index]) return '#444';
+    
+    switch (exerciseStatuses[index]) {
+      case 'inactive': return '#444'; // Dark gray
+      case 'active': 
+      case 'completed': return 'white'; // White text on colored backgrounds
+      default: return '#444';
+    }
+  };
 
   return (
     <div
       style={{
         position: 'absolute',
-        top: 'calc(50% - 170px)',
+        top: 'calc(50% - 250px)',
         left: '25%',
         transform: 'translateX(-50%)',
         width: '360px',
@@ -52,17 +75,19 @@ const ThinkingBox = ({ isVisible }) => {
           margin: 0,
           letterSpacing: '-0.3px'
         }}>
-          Genesis is thinking
+          {isThinking ? 'Genesis is thinking' : 'Neck Stretching Exercises'}
         </h3>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '6px' 
-        }}>
-          <span className="dot"></span>
-          <span className="dot"></span>
-          <span className="dot"></span>
-        </div>
+        {isThinking && (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '6px' 
+          }}>
+            <span className="dot"></span>
+            <span className="dot"></span>
+            <span className="dot"></span>
+          </div>
+        )}
       </div>
 
       <p style={{ 
@@ -71,7 +96,9 @@ const ThinkingBox = ({ isVisible }) => {
         marginBottom: '16px',
         lineHeight: 1.4
       }}>
-        Analyzing your symptoms and preparing recommendations...
+        {isThinking 
+          ? "Analyzing your symptoms and preparing recommendations..." 
+          : "Follow these exercises to help relieve your neck pain:"}
       </p>
       
       <div style={{ 
@@ -79,28 +106,74 @@ const ThinkingBox = ({ isVisible }) => {
         flexDirection: 'column', 
         gap: '10px' 
       }}>
-        {[
-          "Identifying appropriate exercises",
-          "Evaluating intensity level",
-          "Creating personalized treatment plan"
-        ].map((suggestion, index) => (
-          <div 
-            key={index}
-            style={{
-              backgroundColor: '#f5f5f5',
-              padding: '12px 15px',
-              borderRadius: '8px',
-              fontSize: '14px',
-              color: '#444',
-              lineHeight: 1.4,
-              border: '1px solid #eee',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            {suggestion}
-          </div>
-        ))}
+        {isThinking ? (
+          // Thinking suggestions
+          [
+            "Identifying appropriate exercises",
+            "Evaluating intensity level",
+            "Creating personalized treatment plan"
+          ].map((suggestion, index) => (
+            <div 
+              key={index}
+              style={{
+                backgroundColor: '#f5f5f5',
+                padding: '12px 15px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: '#444',
+                lineHeight: 1.4,
+                border: '1px solid #eee',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {suggestion}
+            </div>
+          ))
+        ) : (
+          // Exercise steps
+          exercises.map((exercise, index) => (
+            <div 
+              key={index}
+              style={{
+                backgroundColor: getStatusColor(index),
+                padding: '12px 15px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: getTextColor(index),
+                lineHeight: 1.4,
+                border: '1px solid #eee',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}
+            >
+              <div style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold'
+              }}>
+                {index + 1}
+              </div>
+              <div>
+                {exercise}
+                {exerciseStatuses && exerciseStatuses[index] === 'active' && (
+                  <div style={{ fontSize: '12px', marginTop: '4px' }}>Do this now...</div>
+                )}
+                {exerciseStatuses && exerciseStatuses[index] === 'completed' && (
+                  <div style={{ fontSize: '12px', marginTop: '4px' }}>Completed ✓</div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       <style jsx>{`

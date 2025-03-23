@@ -577,7 +577,6 @@ const VirtualPhysiotherapist = () => {
     // Modified startExerciseSequence function
     const startExerciseSequence = () => {
         // Switch from thinking to exercise mode
-        setIsThinking(false);
         
         // Update the first exercise to active
         const updatedStatuses = [...exerciseStatuses];
@@ -613,8 +612,10 @@ const VirtualPhysiotherapist = () => {
         
         // After intro, demonstrate first exercise
         setTimeout(() => {
-            console.log("DEBUG: after intro play next exercise for question number " + currentExerciseIndex)
+            console.log("DEBUG: after intro play next exercise for question number " + currentStepIndex)
             playNextExerciseStep();
+            setIsThinking(false);
+
         }, 10000);
         }
     };
@@ -628,7 +629,8 @@ const VirtualPhysiotherapist = () => {
         }
         
         const stepKeys = Object.keys(treatmentPlan.steps).sort();
-        if (currentStepIndex >= stepKeys.length) {
+        console.log("playnextexericse: " + currentStepIndex + "and length is "+stepKeys.length)
+        if (currentStepIndex >= (stepKeys.length)) {
         // If we've completed all steps, play the outro
         playOutro();
         return;
@@ -793,6 +795,8 @@ const VirtualPhysiotherapist = () => {
     // Handler for head pose updates from video feed - memoize to prevent recreation
     const handleHeadPoseUpdate = useCallback((pose) => {
       // Use functional update to avoid unnecessary re-renders
+      console.log("DEBUG:checking to update")
+
       setHeadPose(prev => {
         // If the pose is very similar to the previous one, don't update state
         if (prev && pose) {
@@ -802,10 +806,12 @@ const VirtualPhysiotherapist = () => {
           
           // Only update if there's a significant change
           if (yawDiff < 2 && rollDiff < 2 && pitchDiff < 2) {
+            console.log("DEBUG: no update to yaw and pitch")
+
             return prev; // Return previous state to avoid re-render
           }
         }
-        
+        console.log("DEBUG: UPDATED yaw and pitch")
         return pose; // Return new pose if it's significantly different
       });
       
@@ -831,10 +837,13 @@ const VirtualPhysiotherapist = () => {
         // If we're in exercise mode and not in a specific exercise
         if (!isThinking && currentExerciseIndex >= 0 && !exerciseCompleted) {
           console.log("DEBUG: current index is "+currentExerciseIndex)
+          console.log("DEBUG: pitch: "+pose.pitch + " and yaw: " + pose.yaw)
           switch (currentExerciseIndex) {
             case 0: // Stand up straight
-              if (headPose.yaw < 10 && headPose.pitch < 10 && headPose.yaw > -10 && headPose.pitch > -10) {
-                console.log("DEBUG: passed the check for index:  "+currentExerciseIndex)
+            //   console.log("DEBUG: case 0 is here:  "+currentStepIndex+"pitch: "+headPose.pitch + " and yaw: " + headPose.yaw)
+
+              if (pose.yaw < 10 && pose.pitch < 10 && pose.yaw > -10 && pose.pitch > -10) {
+                // console.log("DEBUG: passed the check for index:  "+currentExerciseIndex)
 
                 // Start timing the hold if not already started
                 if (!holdStartTime) {
@@ -857,7 +866,7 @@ const VirtualPhysiotherapist = () => {
                     setHoldStartTime(null);
                     
                     // Play the next exercise step
-                    console.log("DEBUG: case 0 play next exercise for question number " + currentExerciseIndex);
+                    console.log("DEBUG: case 0 play next exercise for question number " + currentStepIndex);
                     playNextExerciseStep();
                   }
                 }
@@ -899,7 +908,7 @@ const VirtualPhysiotherapist = () => {
                     if (modelRef.current) {
                       const rightTiltText = "Perfect! Now tilt your head to the right and hold for 5 seconds.";
                       // apiClient.generateSpeech(rightTiltText);
-                      console.log("DEBUG: case 1 play next exercise for question number " + currentExerciseIndex)
+                      console.log("DEBUG: case 1 play next exercise for question number " + currentStepIndex)
                       playNextExerciseStep();
                       handleCaptionUpdate(rightTiltText);
                       setTimeout(() => modelRef.current.neckStretchRight(), 500);
@@ -945,7 +954,7 @@ const VirtualPhysiotherapist = () => {
                       setTimeout(() => {
                         const congratsText = "Excellent work! You've completed all the exercises. This should help relieve your neck pain.";
                         // apiClient.generateSpeech(congratsText);
-                        console.log("DEBUG: case 2 play next exercise for question number " + currentExerciseIndex)
+                        console.log("DEBUG: case 2 play next exercise for question number " + currentStepIndex)
                         playNextExerciseStep();
                         handleCaptionUpdate(congratsText);
                         modelRef.current.talkingStanding();

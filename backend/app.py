@@ -68,52 +68,37 @@ def treatment():
     }
     """
 
+    sample_json = """
+    {
+    "exercise": "Neck stretch",
+    "intro": "We're going to start out with an exercise that's going to help improve the range of motion in your neck!",
+    "steps": {
+        "1": {
+            "action": "Look straight",
+            "description": "Start by sitting or standing comfortably, keeping your shoulders relaxed, and look directly forward at the camera with your chin parallel to the floor."
+        },
+        "2": {
+            "action": "Tilt neck to left",
+            "description": "Slowly tilt your head to the left, bringing your left ear toward your left shoulder. Hold this gentle stretch for a few seconds, feeling the stretch along the right side of your neck."
+        },
+        "3": {
+            "action": "Tilt neck to right",
+            "description": "Slowly return your head to the center, then gently tilt your head to the right, bringing your right ear toward your right shoulder. Hold the stretch for a few seconds, feeling it on the left side of your neck."
+        }
+    },
+    "outro": "And we're done! This exercise will help you get a good stretch throughout the sides of your neck and your traps, improving your range of motion and helping ease your pain little by little."
+    }
+    """
+
     data = request.get_json()
     questionnaire = data.get('questionnaire', 'I have pain in my neck')    # empty default value for now
     # Simple intro message to the user
 
     # Create the system prompt to send to Gemini
     system_prompt = f"""
-    You are a licensed physiotherapist consulting on a patient who needs your
-    help finding an exercise to ease help ease their pain, rehab an injury,
-    and/or improve their range of motion. 
+    {sample_json}
 
-    Below is the list of questions about the patient's pain/injury and their 
-    responses to each one, which will give you some insight into the type 
-    of issue they are dealing with:
-
-    {questionnaire}
-
-    Based on their answers to this question, put together ONE physiotherapy
-    exercise that best suits the problem or pain they are experiencing. 
-
-    You have this list of actions at your disposal to put together an exercise:
-    - Tilt neck to left
-    - Stand up straight
-    - Tilt neck to right
-    - Rotate neck to left 
-    - Rotate neck to right
-    - Lift right arm up
-    - Lift left arm up 
-    - Reach left arm over head
-    - Reach right arm over head 
-    - Stretch left arm across body
-    - Stretch right arm across body 
-    - Lift left knee up
-    - Life right knee up
-    - Lunge with left leg
-    - Lunge with right leg
-
-    Name the exercise and then put the entire exercise together using 2 to 4
-    of the actions above as steps for the patient to complete one by one.
-    Your response should follow the format of this example, providing all the 
-    data in the format of a JSON payload:
-
-    {sample_exercise_json}
-
-    Now, it's your turn, please generate a response in the same format as the JSON 
-    payload above for the patient's issue. Please output only the JSON payload and no
-    other text around it (do not include markdown formatting like ```json). Please include 3 steps for the exercise.
+    Please output only exactly the JSON payload above and no other text around it (do not include markdown formatting like ```json).
     """
 
     # These might not be necessary anymore given that ElevenLabs is on the frontend
